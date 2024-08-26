@@ -17,16 +17,16 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:papermap_with_gps/common.dart';
 import 'package:papermap_with_gps/settings_screen.dart';
 
-void main() => runApp(const MyApp());
+void main() => runApp(const MaterialApp(home: MyApp()));
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  _MyAppState createState() => _MyAppState();
+  MyAppState createState() => MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class MyAppState extends State<MyApp> {
   Position? _currentPosition;
   Position? _selectedPosition;
   Offset? _selectedPoint;
@@ -35,10 +35,6 @@ class _MyAppState extends State<MyApp> {
   final GlobalKey _imageKey = GlobalKey();
   final MapAppSettings _settings = MapAppSettings(false);
   late List<MapData> _currentMaps;
-  MapData? _mapLeft;
-  MapData? _mapRight;
-  MapData? _mapAbove;
-  MapData? _mapBelow;
   MapData? _panMap;
   int _currentMapIndex = 0;
   // TransformationController _transformationController =
@@ -191,6 +187,10 @@ class _MyAppState extends State<MyApp> {
       }
       // }
       // print("Written new cache metafile $destdirectory/$mapCsvFile");
+      //Set bordering maps for each map loaded
+      for (MapData map in _settings.mapFilesMetadata) {
+        _setBorderingMaps(map);
+      }
     } else {
       // User cancelled the picker
     }
@@ -228,6 +228,10 @@ class _MyAppState extends State<MyApp> {
           _settings.mapFilesMetadata.add(mapData);
         }
       }
+    }
+    //Set bordering maps for each map loaded
+    for (MapData map in _settings.mapFilesMetadata) {
+      _setBorderingMaps(map);
     }
   }
 
@@ -272,58 +276,58 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  void _setBorderingMaps(MapData mapOnShow) {
+  void _setBorderingMaps(MapData mapToSet) {
     //Now find maps that border this one
-    _mapLeft = null;
-    _mapRight = null;
-    _mapAbove = null;
-    _mapBelow = null;
+    mapToSet.mapLeft = null;
+    mapToSet.mapRight = null;
+    mapToSet.mapAbove = null;
+    mapToSet.mapBelow = null;
     double leftOverlap = 0;
     double rightOverlap = 0;
     double aboveOverlap = 0;
     double belowOverlap = 0;
-    if (mapOnShow.fileName != "DefaultMap") {
+    if (mapToSet.fileName != "DefaultMap") {
       for (MapData map in _settings.mapFilesMetadata) {
-        if (map == mapOnShow) continue;
-        double overlap = map.isLeftOf(mapOnShow);
+        if (map == mapToSet) continue;
+        double overlap = map.isLeftOf(mapToSet);
         if (overlap > 0) {
-          if (_mapLeft == null) {
-            _mapLeft = map;
+          if (mapToSet.mapLeft == null) {
+            mapToSet.mapLeft = map;
             leftOverlap = overlap;
           } else if (leftOverlap < overlap) {
             //Map overlaps more
-            _mapLeft = map;
+            mapToSet.mapLeft = map;
             leftOverlap = overlap;
           }
         }
-        overlap = map.isRightOf(mapOnShow);
+        overlap = map.isRightOf(mapToSet);
         if (overlap > 0) {
-          if (_mapRight == null) {
-            _mapRight = map;
+          if (mapToSet.mapRight == null) {
+            mapToSet.mapRight = map;
             rightOverlap = overlap;
           } else if (rightOverlap < overlap) {
             //Map overlaps more
-            _mapRight = map;
+            mapToSet.mapRight = map;
             rightOverlap = overlap;
           }
         }
-        overlap = map.isAbove(mapOnShow);
+        overlap = map.isAbove(mapToSet);
         if (overlap > 0) {
-          if (_mapAbove == null) {
-            _mapAbove = map;
+          if (mapToSet.mapAbove == null) {
+            mapToSet.mapAbove = map;
             aboveOverlap = overlap;
           } else if (aboveOverlap < overlap) {
-            _mapAbove = map;
+            mapToSet.mapAbove = map;
             aboveOverlap = overlap;
           }
         }
-        overlap = map.isBelow(mapOnShow);
+        overlap = map.isBelow(mapToSet);
         if (overlap > 0) {
-          if (_mapBelow == null) {
-            _mapBelow = map;
+          if (mapToSet.mapBelow == null) {
+            mapToSet.mapBelow = map;
             belowOverlap = overlap;
           } else if (belowOverlap < overlap) {
-            _mapBelow = map;
+            mapToSet.mapBelow = map;
             belowOverlap = overlap;
           }
         }
@@ -669,7 +673,6 @@ class _MyAppState extends State<MyApp> {
                         _selectedPoint = null;
                         _distance = 0;
                         _panMap = null;
-                        _setBorderingMaps(_currentMaps[_currentMapIndex]);
                       });
                     },
                   ),
@@ -679,7 +682,6 @@ class _MyAppState extends State<MyApp> {
                         ? () {
                             setState(() {
                               _currentMapIndex++;
-                              _setBorderingMaps(_currentMaps[_currentMapIndex]);
                             });
                             Future.delayed(const Duration(milliseconds: 1500),
                                 _getCurrentLocation);
@@ -692,7 +694,6 @@ class _MyAppState extends State<MyApp> {
                         ? () {
                             setState(() {
                               _currentMapIndex--;
-                              _setBorderingMaps(_currentMaps[_currentMapIndex]);
                             });
                             Future.delayed(const Duration(milliseconds: 1500),
                                 _getCurrentLocation);
@@ -854,15 +855,21 @@ class _MyAppState extends State<MyApp> {
           (totalBoxSize.height / 4);
     }
     double distInfoPos =
-        (_settings.showAltitude && !_settings.isManualEnabled) ? 45 : 10;
+        (_settings.showAltitude && !_settings.isManualEnabled) ? 40 : 5;
+    double panOffset = _distance != 0
+        ? (_settings.showAltitude && !_settings.isManualEnabled
+            ? (distInfoPos * 2) - 5
+            : (distInfoPos * 2) + 30)
+        : distInfoPos;
+
     return Stack(
       fit: StackFit.expand,
       children: [
         if (_settings.showAltitude && !_settings.isManualEnabled) ...{
           Positioned(
-            top: isTopQuarter ? null : 10,
-            bottom: isTopQuarter ? 10 : null,
-            right: 10,
+            top: isTopQuarter ? null : 5,
+            bottom: isTopQuarter ? 5 : null,
+            right: 5,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
@@ -883,7 +890,7 @@ class _MyAppState extends State<MyApp> {
           Positioned(
             top: isTopQuarter ? null : distInfoPos,
             bottom: isTopQuarter ? distInfoPos : null,
-            right: 10,
+            right: 5,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
@@ -901,23 +908,19 @@ class _MyAppState extends State<MyApp> {
           ),
         },
         if (_settings.showPan) ...{
-          _buildArrowButtons(
-              isTopQuarter
-                  ? null
-                  : (_distance != 0 ? (distInfoPos * 2) : distInfoPos),
-              isTopQuarter
-                  ? (_distance != 0 ? (distInfoPos * 2) : distInfoPos)
-                  : null),
+          _buildArrowButtons(currentMap, isTopQuarter ? null : panOffset,
+              isTopQuarter ? panOffset : null),
         },
       ],
     );
   }
 
-  Widget _buildArrowButtons(double? topSep, double? bottomSep) {
+  Widget _buildArrowButtons(
+      MapData currentMap, double? topSep, double? bottomSep) {
     return Positioned(
       top: topSep,
       bottom: bottomSep,
-      right: 10,
+      right: 5,
       child: GestureDetector(
         onTap: () {
           // Absorb the tap event so it doesn't propagate to the parent GestureDetector
@@ -934,25 +937,25 @@ class _MyAppState extends State<MyApp> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildArrowButton(Icons.arrow_circle_up, _mapAbove != null,
-                      PanDirection.up),
+                  _buildArrowButton(currentMap, Icons.arrow_circle_up,
+                      currentMap.mapAbove != null, PanDirection.up),
                 ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildArrowButton(Icons.arrow_circle_left, _mapLeft != null,
-                      PanDirection.left),
+                  _buildArrowButton(currentMap, Icons.arrow_circle_left,
+                      currentMap.mapLeft != null, PanDirection.left),
                   const SizedBox(width: 5),
-                  _buildArrowButton(Icons.arrow_circle_right, _mapRight != null,
-                      PanDirection.right),
+                  _buildArrowButton(currentMap, Icons.arrow_circle_right,
+                      currentMap.mapRight != null, PanDirection.right),
                 ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildArrowButton(Icons.arrow_circle_down, _mapBelow != null,
-                      PanDirection.down),
+                  _buildArrowButton(currentMap, Icons.arrow_circle_down,
+                      currentMap.mapBelow != null, PanDirection.down),
                 ],
               ),
             ],
@@ -962,43 +965,41 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  Widget _buildArrowButton(
-      IconData icon, bool isEnabled, PanDirection arrowPressed) {
+  Widget _buildArrowButton(MapData currentMap, IconData icon, bool isEnabled,
+      PanDirection arrowPressed) {
     return IgnorePointer(
       ignoring: false,
       child: IconButton(
         icon: Icon(icon),
         iconSize: 35,
         color: isEnabled ? Colors.white : Colors.grey,
-        onPressed: isEnabled ? () => _handleArrowPress(arrowPressed) : null,
+        onPressed: isEnabled
+            ? () => _handleArrowPress(currentMap, arrowPressed)
+            : null,
       ),
     );
   }
 
-  void _handleArrowPress(PanDirection arrow) {
+  void _handleArrowPress(MapData currentMap, PanDirection arrow) {
     // Implement logic for handling arrow button presses here
     if (arrow == PanDirection.left) {
       setState(() {
-        _panMap = _mapLeft;
-        _setBorderingMaps(_panMap!);
+        _panMap = currentMap.mapLeft;
       });
     }
     if (arrow == PanDirection.right) {
       setState(() {
-        _panMap = _mapRight;
-        _setBorderingMaps(_panMap!);
+        _panMap = currentMap.mapRight;
       });
     }
     if (arrow == PanDirection.up) {
       setState(() {
-        _panMap = _mapAbove;
-        _setBorderingMaps(_panMap!);
+        _panMap = currentMap.mapAbove;
       });
     }
     if (arrow == PanDirection.down) {
       setState(() {
-        _panMap = _mapBelow;
-        _setBorderingMaps(_panMap!);
+        _panMap = currentMap.mapBelow;
       });
     }
   }

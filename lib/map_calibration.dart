@@ -13,10 +13,10 @@ class MapCalibrationScreen extends StatefulWidget {
   const MapCalibrationScreen({super.key, required this.settings});
 
   @override
-  _MapCalibrationScreenState createState() => _MapCalibrationScreenState();
+  MapCalibrationScreenState createState() => MapCalibrationScreenState();
 }
 
-class _MapCalibrationScreenState extends State<MapCalibrationScreen> {
+class MapCalibrationScreenState extends State<MapCalibrationScreen> {
   File? _imageFile;
   final GlobalKey _imageKey = GlobalKey();
   Position? _firstPoint;
