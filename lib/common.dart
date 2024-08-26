@@ -52,6 +52,10 @@ class MapData {
   late Position bottomRight;
   int quality = -1;
   double _area = -1;
+  MapData? mapLeft;
+  MapData? mapRight;
+  MapData? mapAbove;
+  MapData? mapBelow;
 
   static const double _degreesToKilometers =
       111.0; // approximate conversion for latitude
@@ -185,21 +189,29 @@ class MapData {
           bottomRight.latitude >= map.bottomRight.latitude;
       bool bottomEdge = topLeft.latitude >= map.bottomRight.latitude &&
           topLeft.latitude <= map.topLeft.latitude;
-      if (leftMostEdge && rightMostEdge && (topEdge || bottomEdge)) {
+      bool completeOverlap = topLeft.latitude >= map.topLeft.latitude &&
+          bottomRight.latitude <= map.bottomRight.latitude;
+      if (leftMostEdge &&
+          rightMostEdge &&
+          (topEdge || bottomEdge || completeOverlap)) {
         //Return value is amount of overlap in latitude
-        double overlap1 = 0;
-        double overlap2 = 0;
-        if (topEdge) {
-          overlap1 = map.topLeft.latitude - bottomRight.latitude;
-        }
-
-        if (bottomEdge) {
-          overlap2 = topLeft.latitude - map.bottomRight.latitude;
-        }
-        if (overlap1 > overlap2) {
-          retVal = overlap1;
+        if (completeOverlap) {
+          retVal = map.bottomRight.latitude - map.topLeft.latitude;
         } else {
-          retVal = overlap2;
+          double overlap1 = 0;
+          double overlap2 = 0;
+          if (topEdge) {
+            overlap1 = map.topLeft.latitude - bottomRight.latitude;
+          }
+
+          if (bottomEdge) {
+            overlap2 = topLeft.latitude - map.bottomRight.latitude;
+          }
+          if (overlap1 > overlap2) {
+            retVal = overlap1;
+          } else {
+            retVal = overlap2;
+          }
         }
       }
     }
@@ -219,20 +231,29 @@ class MapData {
           bottomRight.latitude >= map.bottomRight.latitude;
       bool bottomEdge = topLeft.latitude >= map.bottomRight.latitude &&
           topLeft.latitude <= map.topLeft.latitude;
-      if (leftMostEdge && rightMostEdge && (topEdge || bottomEdge)) {
+      bool completeOverlap = topLeft.latitude >= map.topLeft.latitude &&
+          bottomRight.latitude <= map.bottomRight.latitude;
+      if (leftMostEdge &&
+          rightMostEdge &&
+          (topEdge || bottomEdge || completeOverlap)) {
         //Return value is amount of overlap in latitude
-        double overlap1 = 0;
-        double overlap2 = 0;
-        if (topEdge) {
-          overlap1 = map.topLeft.latitude - bottomRight.latitude;
-        }
-        if (bottomEdge) {
-          overlap2 = topLeft.latitude - map.bottomRight.latitude;
-        }
-        if (overlap1 > overlap2) {
-          retVal = overlap1;
+        if (completeOverlap) {
+          retVal = map.bottomRight.latitude - map.topLeft.latitude;
         } else {
-          retVal = overlap2;
+          //Return value is amount of overlap in latitude
+          double overlap1 = 0;
+          double overlap2 = 0;
+          if (topEdge) {
+            overlap1 = map.topLeft.latitude - bottomRight.latitude;
+          }
+          if (bottomEdge) {
+            overlap2 = topLeft.latitude - map.bottomRight.latitude;
+          }
+          if (overlap1 > overlap2) {
+            retVal = overlap1;
+          } else {
+            retVal = overlap2;
+          }
         }
       }
     }
