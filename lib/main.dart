@@ -659,6 +659,7 @@ class MyAppState extends State<MyApp> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.refresh),
+                    tooltip: 'Refresh GPS',
                     onPressed: () {
                       setState(() {
                         _getCurrentLocation();
@@ -667,6 +668,7 @@ class MyAppState extends State<MyApp> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.clear),
+                    tooltip: 'Clear',
                     onPressed: () {
                       setState(() {
                         _selectedPosition = null;
@@ -678,6 +680,7 @@ class MyAppState extends State<MyApp> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.arrow_upward),
+                    tooltip: 'Scale Up',
                     onPressed: _currentMapIndex < _currentMaps.length - 1
                         ? () {
                             setState(() {
@@ -690,6 +693,7 @@ class MyAppState extends State<MyApp> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.arrow_downward),
+                    tooltip: 'Scale Down',
                     onPressed: _currentMapIndex > 0
                         ? () {
                             setState(() {
@@ -702,6 +706,7 @@ class MyAppState extends State<MyApp> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.settings),
+                    tooltip: 'Settings',
                     onPressed: () async {
                       _settings.csvFileToImport = null;
                       await Navigator.of(context).push(

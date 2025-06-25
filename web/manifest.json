@@ -1,6 +1,6 @@
 {
-    "name": "papermap_with_gps",
-    "short_name": "papermap_with_gps",
+    "name": "papermap",
+    "short_name": "papermap",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
