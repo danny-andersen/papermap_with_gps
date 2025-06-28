@@ -31,6 +31,7 @@ class MyAppState extends State<MyApp> {
   Position? _selectedPosition;
   Offset? _selectedPoint;
   double _distance = 0;
+  DateTime _lastUpdate = DateTime(1, 1, 1, 0, 0, 0);
   final TextEditingController _positionController = TextEditingController();
   final GlobalKey _imageKey = GlobalKey();
   final MapAppSettings _settings = MapAppSettings(false);
@@ -384,6 +385,7 @@ class MyAppState extends State<MyApp> {
             .then((Position position) {
           setState(() {
             _currentPosition = position;
+            _lastUpdate = DateTime.now();
             if (_selectedPosition != null) {
               _distance = calculateDistance(
                   _currentPosition!.latitude,
@@ -576,6 +578,20 @@ class MyAppState extends State<MyApp> {
       // print(
       //     "Lat: ${_currentPosition!.latitude}  Long: ${_currentPosition!.longitude}");
 
+      Color positionColor = Colors.red;
+      if (_lastUpdate
+          .isBefore(DateTime.now().subtract(const Duration(seconds: 180)))) {
+        //If last update was more than 30 SECS ago, show position in orange
+        positionColor = Colors.grey;
+      } else if (_lastUpdate
+          .isBefore(DateTime.now().subtract(const Duration(seconds: 60)))) {
+        //If last update was more than 1 minute ago, show position in yellow
+        positionColor = Colors.yellow;
+      } else if (_lastUpdate
+          .isBefore(DateTime.now().subtract(const Duration(seconds: 30)))) {
+        //If last update was more than 3 mins ago, show position as grey (i.e. last known position)
+        positionColor = Colors.orange;
+      }
       if (_settings.isCompassPointerEnabled && !_settings.isManualEnabled) {
         const double iconSize = 30.0;
         double adjustedLeft = fixedPoint.dx - iconSize / 2;
@@ -602,10 +618,10 @@ class MyAppState extends State<MyApp> {
               }
               return Transform.rotate(
                 angle: (direction * (math.pi / 180)),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_upward,
                   size: iconSize,
-                  color: Colors.red,
+                  color: positionColor,
                 ),
               );
             },
@@ -623,7 +639,7 @@ class MyAppState extends State<MyApp> {
             // color: Colors.red,
             // size: 50,
             Icons.location_on,
-            color: Colors.red,
+            color: positionColor,
             size: iconSize,
           ),
         );
@@ -632,7 +648,7 @@ class MyAppState extends State<MyApp> {
       retWidget = Positioned(
         left: totalBoxSize.width / 2,
         top: totalBoxSize.height / 2,
-        child: const Icon(
+        child: Icon(
           // Icons.arrow_drop_up,
           // color: Colors.red,
           // size: 50,
@@ -743,6 +759,7 @@ class MyAppState extends State<MyApp> {
                 ),
                 ElevatedButton(
                   onPressed: () {
+                    _lastUpdate = DateTime.now();
                     setState(() {
                       _getCurrentLocation();
                     });
