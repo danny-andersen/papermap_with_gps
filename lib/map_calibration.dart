@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:path/path.dart' as path;
 
 import 'package:papermap_with_gps/common.dart';
+import 'package:papermap_with_gps/gpxpainter.dart';
 
 class MapCalibrationScreen extends StatefulWidget {
   final MapAppSettings settings;
@@ -25,6 +26,7 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
   Offset? _secondOffset;
   Offset? _testOffset;
   MapData? _currentMap;
+  List<TrackPoint> _trackPoints = [];
   double? _width;
   double? _height;
   bool _canSelect = false;
@@ -107,11 +109,29 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
       _firstPointController.clear();
       _secondPointController.clear();
       _testPointController.clear();
+      _trackPoints.clear();
     });
   }
 
   void _save() {
     MapData.saveMapData(_settings);
+  }
+
+  void _loadGPX() async {
+    final filePath = await FilesystemPicker.openDialog(
+      title: 'Pick a GPX file',
+      context: context,
+      rootDirectory: Directory(_settings.mapDir!),
+      fsType: FilesystemType.file,
+      // allowedExtensions: ['gpx', 'xml'],
+      fileTileSelectMode: FileTileSelectMode.wholeTile,
+    );
+    if (filePath == null) return;
+    final xmlString = await File(filePath).readAsString();
+    final points = await parseGpxTrackPoints(xmlString);
+    setState(() {
+      _trackPoints = points;
+    });
   }
 
   void _testPoint(Offset offset) {
@@ -266,6 +286,13 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
                   child: const Text('Save'),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ElevatedButton(
+                  onPressed: _currentMap != null ? _loadGPX : null,
+                  child: const Text('Load GPX file'),
+                ),
+              ),
             ],
           ),
           Expanded(
@@ -319,6 +346,16 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
                                   Icons.location_on,
                                   color: Colors.green,
                                   size: 24,
+                                ),
+                              ),
+                            if (_trackPoints.isNotEmpty)
+                              CustomPaint(
+                                size: Size(_width!, _height!),
+                                painter: GpxTrailPainter(
+                                  points: _trackPoints,
+                                  imageWidth: _width!,
+                                  imageHeight: _height!,
+                                  mapData: _currentMap!,
                                 ),
                               ),
                           ],

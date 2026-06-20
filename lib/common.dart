@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:io';
+import 'package:xml/xml.dart';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:path/path.dart' as path;
@@ -8,6 +9,55 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 
 enum PanDirection { left, right, up, down }
+
+class TrackPoint {
+  final double lat;
+  final double lon;
+  final double elevation;
+  final DateTime time;
+
+  TrackPoint({
+    required this.lat,
+    required this.lon,
+    required this.elevation,
+    required this.time,
+  });
+
+  @override
+  String toString() =>
+      'TrackPoint(lat: $lat, lon: $lon, ele: $elevation, time: $time)';
+}
+
+Future<List<TrackPoint>> parseGpxTrackPoints(String gpxXml) async {
+  final document = XmlDocument.parse(gpxXml);
+
+  final trkpts = document.findAllElements('trkpt', namespace: '*');
+
+  final points = <TrackPoint>[];
+
+  for (final pt in trkpts) {
+    final lat = double.parse(pt.getAttribute('lat')!);
+    final lon = double.parse(pt.getAttribute('lon')!);
+
+    final eleElement = pt.getElement('ele', namespace: '*');
+    final timeElement = pt.getElement('time', namespace: '*');
+
+    final elevation = eleElement != null ? double.parse(eleElement.text) : 0.0;
+    final time =
+        timeElement != null ? DateTime.parse(timeElement.text) : DateTime.now();
+
+    points.add(
+      TrackPoint(
+        lat: lat,
+        lon: lon,
+        elevation: elevation,
+        time: time,
+      ),
+    );
+  }
+
+  return points;
+}
 
 class MapAppSettings {
   static const String mapCsvFile = 'mapdata.csv';
