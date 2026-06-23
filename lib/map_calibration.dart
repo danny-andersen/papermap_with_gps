@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:filesystem_picker/filesystem_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:path/path.dart' as path;
@@ -27,6 +28,7 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
   Offset? _testOffset;
   MapData? _currentMap;
   List<TrackPoint> _trackPoints = [];
+  int _highlightedGPXpoint = 0;
   double? _width;
   double? _height;
   bool _canSelect = false;
@@ -37,6 +39,7 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
   final TextEditingController _firstPointController = TextEditingController();
   final TextEditingController _secondPointController = TextEditingController();
   final TextEditingController _testPointController = TextEditingController();
+  final TextEditingController _gpxPointController = TextEditingController();
 
   @override
   void initState() {
@@ -110,6 +113,7 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
       _secondPointController.clear();
       _testPointController.clear();
       _trackPoints.clear();
+      _highlightedGPXpoint = 0;
     });
   }
 
@@ -131,6 +135,7 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
     final points = await parseGpxTrackPoints(xmlString);
     setState(() {
       _trackPoints = points;
+      _highlightedGPXpoint = 0;
     });
   }
 
@@ -220,6 +225,30 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
     }
   }
 
+  void _updateGPXTextField() {
+    final p = _trackPoints[_highlightedGPXpoint];
+    _gpxPointController.text =
+        '${p.lat.toStringAsFixed(6)}, ${p.lon.toStringAsFixed(6)}';
+  }
+
+  void _moveNextGPXPoint(int jump) {
+    if (_highlightedGPXpoint < _trackPoints.length - jump) {
+      setState(() {
+        _highlightedGPXpoint += jump;
+        _updateGPXTextField();
+      });
+    }
+  }
+
+  void _movePreviousGPXPoint(int jump) {
+    if (_highlightedGPXpoint > jump) {
+      setState(() {
+        _highlightedGPXpoint -= jump;
+        _updateGPXTextField();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -250,6 +279,14 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
                   child: TextField(
                     controller: _testPointController,
                     decoration: const InputDecoration(labelText: 'Test Point'),
+                  ),
+                ),
+              },
+              if (_trackPoints.isNotEmpty) ...{
+                Expanded(
+                  child: TextField(
+                    controller: _gpxPointController,
+                    decoration: const InputDecoration(labelText: 'GPX'),
                   ),
                 ),
               },
@@ -302,65 +339,88 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
                     builder: (context, constraints) {
                       _width = constraints.maxWidth;
                       _height = constraints.maxHeight;
-                      return GestureDetector(
-                        onTapDown: (details) {
-                          if (_canSelect) {
-                            _setPoint(details.localPosition);
-                          } else if (_canTest) {
-                            _testPoint(details.localPosition);
-                          }
-                        },
-                        child: Stack(
-                          children: [
-                            Image.file(
-                                key: _imageKey,
-                                _imageFile!,
-                                cacheWidth: constraints.maxWidth.toInt() * 4,
-                                cacheHeight: constraints.maxHeight.toInt() * 4,
-                                fit: BoxFit.contain),
-                            if (_firstOffset != null)
-                              Positioned(
-                                left: _firstOffset!.dx - 12,
-                                top: _firstOffset!.dy - 24,
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: Colors.red,
-                                  size: 24,
-                                ),
-                              ),
-                            if (_secondOffset != null)
-                              Positioned(
-                                left: _secondOffset!.dx - 12,
-                                top: _secondOffset!.dy - 24,
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: Colors.blue,
-                                  size: 24,
-                                ),
-                              ),
-                            if (_testOffset != null)
-                              Positioned(
-                                left: _testOffset!.dx - 12,
-                                top: _testOffset!.dy - 24,
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: Colors.green,
-                                  size: 24,
-                                ),
-                              ),
-                            if (_trackPoints.isNotEmpty)
-                              CustomPaint(
-                                size: Size(_width!, _height!),
-                                painter: GpxTrailPainter(
-                                  points: _trackPoints,
-                                  imageWidth: _width!,
-                                  imageHeight: _height!,
-                                  mapData: _currentMap!,
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
+                      return Focus(
+                          autofocus: true,
+                          onKeyEvent: (node, event) {
+                            if (event is KeyDownEvent) {
+                              if (event.logicalKey ==
+                                  LogicalKeyboardKey.arrowRight) {
+                                _moveNextGPXPoint(5);
+                              } else if (event.logicalKey ==
+                                  LogicalKeyboardKey.arrowDown) {
+                                _moveNextGPXPoint(30);
+                              } else if (event.logicalKey ==
+                                  LogicalKeyboardKey.arrowLeft) {
+                                _movePreviousGPXPoint(5);
+                              } else if (event.logicalKey ==
+                                  LogicalKeyboardKey.arrowUp) {
+                                _movePreviousGPXPoint(30);
+                              }
+                            }
+                            return KeyEventResult.handled;
+                          },
+                          child: GestureDetector(
+                            onTapDown: (details) {
+                              if (_canSelect) {
+                                _setPoint(details.localPosition);
+                              } else if (_canTest) {
+                                _testPoint(details.localPosition);
+                              }
+                            },
+                            child: Stack(
+                              children: [
+                                Image.file(
+                                    key: _imageKey,
+                                    _imageFile!,
+                                    cacheWidth:
+                                        constraints.maxWidth.toInt() * 4,
+                                    cacheHeight:
+                                        constraints.maxHeight.toInt() * 4,
+                                    fit: BoxFit.contain),
+                                if (_firstOffset != null)
+                                  Positioned(
+                                    left: _firstOffset!.dx - 12,
+                                    top: _firstOffset!.dy - 24,
+                                    child: const Icon(
+                                      Icons.location_on,
+                                      color: Colors.red,
+                                      size: 24,
+                                    ),
+                                  ),
+                                if (_secondOffset != null)
+                                  Positioned(
+                                    left: _secondOffset!.dx - 12,
+                                    top: _secondOffset!.dy - 24,
+                                    child: const Icon(
+                                      Icons.location_on,
+                                      color: Colors.blue,
+                                      size: 24,
+                                    ),
+                                  ),
+                                if (_testOffset != null)
+                                  Positioned(
+                                    left: _testOffset!.dx - 12,
+                                    top: _testOffset!.dy - 24,
+                                    child: const Icon(
+                                      Icons.location_on,
+                                      color: Colors.green,
+                                      size: 24,
+                                    ),
+                                  ),
+                                if (_trackPoints.isNotEmpty)
+                                  CustomPaint(
+                                    size: Size(_width!, _height!),
+                                    painter: GpxTrailPainter(
+                                      points: _trackPoints,
+                                      hightlightedPoint: _highlightedGPXpoint,
+                                      imageWidth: _width!,
+                                      imageHeight: _height!,
+                                      mapData: _currentMap!,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ));
                     },
                   ),
           ),

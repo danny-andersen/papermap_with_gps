@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 
 import 'package:papermap_with_gps/common.dart';
 import 'package:papermap_with_gps/map_calibration.dart';
+import 'package:papermap_with_gps/show_map_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   MapAppSettings settings;
@@ -13,16 +14,18 @@ class SettingsScreen extends StatefulWidget {
   SettingsScreen({super.key, required this.settings});
 
   @override
-  SettingsScreenState createState() => SettingsScreenState();
+  SettingsScreenState createState() => SettingsScreenState(settings: settings);
 }
 
 class SettingsScreenState extends State<SettingsScreen> {
-  late MapAppSettings _settings;
+  SettingsScreenState({required MapAppSettings settings})
+    : _settings = settings;
+
+  MapAppSettings _settings;
 
   @override
   void initState() {
     super.initState();
-    _settings = widget.settings;
   }
 
   Future<String?> _selectCSVFile(BuildContext context) async {
@@ -47,48 +50,71 @@ class SettingsScreenState extends State<SettingsScreen> {
     if (context.mounted) {
       showDialog(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text("Warning!"),
-          content: const Text("Are you sure? This will remove all maps"),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () async {
-                for (MapData map in _settings.mapFilesMetadata) {
-                  File mapFile = File(map.fileName);
-                  try {
-                    mapFile.deleteSync();
-                  } catch (e) {
-                    //Ignore
-                  }
-                }
-                Directory? rootdir = await MapAppSettings.getRootDirectory();
-                String destDir =
-                    path.join(rootdir.path, MapAppSettings.localMapDir);
-                File csv = File(path.join(destDir, MapAppSettings.mapCsvFile));
-                csv.deleteSync();
-                _settings.mapFilesMetadata = List.empty(growable: true);
-                Navigator.pop(ctx);
-              },
-              child: Container(
-                color: Colors.red,
-                padding: const EdgeInsets.all(14),
-                child: const Text("OK"),
-              ),
+        builder:
+            (ctx) => AlertDialog(
+              title: const Text("Warning!"),
+              content: const Text("Are you sure? This will remove all maps"),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () async {
+                    for (MapData map in _settings.mapFilesMetadata) {
+                      File mapFile = File(map.fileName);
+                      try {
+                        mapFile.deleteSync();
+                      } catch (e) {
+                        //Ignore
+                      }
+                    }
+                    Directory? rootdir =
+                        await MapAppSettings.getRootDirectory();
+                    String destDir = path.join(
+                      rootdir.path,
+                      MapAppSettings.localMapDir,
+                    );
+                    File csv = File(
+                      path.join(destDir, MapAppSettings.mapCsvFile),
+                    );
+                    csv.deleteSync();
+                    _settings.mapFilesMetadata = List.empty(growable: true);
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    color: Colors.red,
+                    padding: const EdgeInsets.all(14),
+                    child: const Text("OK"),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    color: Colors.green,
+                    padding: const EdgeInsets.all(14),
+                    child: const Text("Cancel"),
+                  ),
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-              },
-              child: Container(
-                color: Colors.green,
-                padding: const EdgeInsets.all(14),
-                child: const Text("Cancel"),
-              ),
-            ),
-          ],
-        ),
       );
     }
+  }
+
+  void _loadGPX() async {
+    final filePath = await FilesystemPicker.openDialog(
+      title: 'Pick a GPX file',
+      context: context,
+      rootDirectory: Directory(_settings.mapDir!),
+      fsType: FilesystemType.file,
+      allowedExtensions: ['.xml'],
+      fileTileSelectMode: FileTileSelectMode.wholeTile,
+    );
+    if (filePath == null) return;
+    final xmlString = await File(filePath).readAsString();
+    final points = await parseGpxTrackPoints(xmlString);
+    setState(() {
+      _settings.trackPoints = points;
+    });
   }
 
   void _listMaps() {
@@ -103,25 +129,24 @@ class SettingsScreenState extends State<SettingsScreen> {
       buffer.writeln("Total maps stored: $count");
       showDialog(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text("Maps in Cache"),
-          content: Expanded(
-            child: SingleChildScrollView(
-              child: Text(buffer.toString()),
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                child: const Text("OK"),
+        builder:
+            (ctx) => AlertDialog(
+              title: const Text("Maps in Cache"),
+              content: Expanded(
+                child: SingleChildScrollView(child: Text(buffer.toString())),
               ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    child: const Text("OK"),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
       );
     }
   }
@@ -129,14 +154,127 @@ class SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Application Settings'),
-      ),
+      appBar: AppBar(title: const Text('Application Settings')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Manual Entry'),
+                  Switch(
+                    value: _settings.isManualEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _settings.isManualEnabled = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Show Position coords'),
+                  Switch(
+                    value: _settings.showPosition,
+                    onChanged: (value) {
+                      setState(() {
+                        _settings.showPosition = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Show Pan controls'),
+                  Switch(
+                    value: _settings.showPan,
+                    onChanged: (value) {
+                      setState(() {
+                        _settings.showPan = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Show Altitude'),
+                  Switch(
+                    value: _settings.showAltitude,
+                    onChanged: (value) {
+                      setState(() {
+                        _settings.showAltitude = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Direction Pointer'),
+                  Switch(
+                    value: _settings.isCompassPointerEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _settings.isCompassPointerEnabled = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ElevatedButton(
+                onPressed: _loadGPX,
+                child: const Text('Load GPX file'),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: ElevatedButton(
+                onPressed: () {
+                  _listMaps();
+                },
+                child: const Text('List Maps'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: ElevatedButton(
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => ShowMapScreen(settings: _settings),
+                    ),
+                  );
+                },
+                child: const Text('Display map'),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(8),
               child: ElevatedButton(
@@ -155,106 +293,13 @@ class SettingsScreenState extends State<SettingsScreen> {
                 onPressed: () async {
                   await Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) =>
-                          MapCalibrationScreen(settings: _settings),
+                      builder:
+                          (context) =>
+                              MapCalibrationScreen(settings: _settings),
                     ),
                   );
                 },
                 child: const Text('Calibrate maps'),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Manual Entry'),
-                  Switch(
-                    value: _settings.isManualEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.isManualEnabled = value;
-                      });
-                    },
-                  )
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Show Position coords'),
-                  Switch(
-                    value: _settings.showPosition,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.showPosition = value;
-                      });
-                    },
-                  )
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Show Pan controls'),
-                  Switch(
-                    value: _settings.showPan,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.showPan = value;
-                      });
-                    },
-                  )
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Show Altitude'),
-                  Switch(
-                    value: _settings.showAltitude,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.showAltitude = value;
-                      });
-                    },
-                  )
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Direction Pointer'),
-                  Switch(
-                    value: _settings.isCompassPointerEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.isCompassPointerEnabled = value;
-                      });
-                    },
-                  )
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: ElevatedButton(
-                onPressed: () {
-                  _listMaps();
-                },
-                child: const Text('List Maps'),
               ),
             ),
             Padding(
@@ -274,7 +319,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                 },
                 child: const Text('Done'),
               ),
-            )
+            ),
           ],
         ),
       ),

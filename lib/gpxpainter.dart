@@ -5,12 +5,14 @@ import 'package:papermap_with_gps/common.dart';
 
 class GpxTrailPainter extends CustomPainter {
   final List<TrackPoint> points;
+  final int hightlightedPoint;
   final double imageWidth;
   final double imageHeight;
   final MapData mapData;
 
   GpxTrailPainter({
     required this.points,
+    required this.hightlightedPoint,
     required this.imageWidth,
     required this.imageHeight,
     required this.mapData,
@@ -21,6 +23,12 @@ class GpxTrailPainter extends CustomPainter {
     final paint = Paint()
       ..color = Colors.black
       ..style = PaintingStyle.fill;
+
+    final paintHighlighted = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    int index = -1;
 
     for (final TrackPoint p in points) {
       final pos = Position(
@@ -35,6 +43,7 @@ class GpxTrailPainter extends CustomPainter {
         headingAccuracy: 0.0,
         altitudeAccuracy: 0.0,
       );
+      index++;
 
       // Only draw if the point is inside the map bounds
       if (!mapData.isPointOnMap(pos)) continue;
@@ -43,7 +52,11 @@ class GpxTrailPainter extends CustomPainter {
       final left = mapData.calculateLeft(pos, imageWidth);
 
       if (top >= 0 && left >= 0) {
-        canvas.drawCircle(Offset(left, top), 2.0, paint);
+        if (index == hightlightedPoint) {
+          canvas.drawCircle(Offset(left, top), 5.0, paintHighlighted);
+        } else {
+          canvas.drawCircle(Offset(left, top), 2.0, paint);
+        }
       }
     }
   }

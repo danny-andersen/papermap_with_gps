@@ -16,6 +16,7 @@ import 'package:flutter_compass/flutter_compass.dart';
 
 import 'package:papermap_with_gps/common.dart';
 import 'package:papermap_with_gps/settings_screen.dart';
+import 'package:papermap_with_gps/gpxpainter.dart';
 
 void main() => runApp(const MaterialApp(home: MyApp()));
 
@@ -60,10 +61,11 @@ class MyAppState extends State<MyApp> {
 
   void _turnOnRefresh() {
     Future.delayed(
-        const Duration(seconds: 2),
-        () => setState(() {
-              _getCurrentLocation();
-            }));
+      const Duration(seconds: 2),
+      () => setState(() {
+        _getCurrentLocation();
+      }),
+    );
     gpsUpdateTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       setState(() {
         _getCurrentLocation();
@@ -89,12 +91,17 @@ class MyAppState extends State<MyApp> {
       String sourceDir = path.dirname(csvfile);
       final csvinput = file.openRead();
       const settings = FirstOccurrenceSettingsDetector(
-          eols: ['\r\n', '\n'], textDelimiters: ['"', "'"]);
+        eols: ['\r\n', '\n'],
+        textDelimiters: ['"', "'"],
+      );
 
-      final fields = await csvinput
-          .transform(utf8.decoder)
-          .transform(const CsvToListConverter(csvSettingsDetector: settings))
-          .toList();
+      final fields =
+          await csvinput
+              .transform(utf8.decoder)
+              .transform(
+                const CsvToListConverter(csvSettingsDetector: settings),
+              )
+              .toList();
 
       // CSV file has a row for each map file
       // filename, top left lat, top left long, bottom right lat, bottom right long, quality
@@ -122,7 +129,9 @@ class MyAppState extends State<MyApp> {
             mapData.fileName = destPath;
             //Add or replace CSV entry for existing CSV file held in user directory, if it exists
             MapData? existingMap = MapData.getByFilename(
-                _settings.mapFilesMetadata, mapData.fileName);
+              _settings.mapFilesMetadata,
+              mapData.fileName,
+            );
             if (existingMap == null) {
               _settings.mapFilesMetadata.add(mapData);
             } else {
@@ -140,23 +149,25 @@ class MyAppState extends State<MyApp> {
             if (context.mounted) {
               showDialog(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text("Failed to copy map"),
-                  content:
-                      Text("${path.join(sourceDir, mapData.fileName)}: $e"),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                      },
-                      child: Container(
-                        color: Colors.green,
-                        padding: const EdgeInsets.all(14),
-                        child: const Text("OK"),
+                builder:
+                    (ctx) => AlertDialog(
+                      title: const Text("Failed to copy map"),
+                      content: Text(
+                        "${path.join(sourceDir, mapData.fileName)}: $e",
                       ),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                          },
+                          child: Container(
+                            color: Colors.green,
+                            padding: const EdgeInsets.all(14),
+                            child: const Text("OK"),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               );
             }
             // print(
@@ -165,25 +176,28 @@ class MyAppState extends State<MyApp> {
         }
       }
       int totalMaps = MapData.saveMapData(_settings);
+      copyGpxFilesToCache(sourceDir, _settings.mapDir!);
       if (context.mounted) {
         showDialog(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text("New map metafile created"),
-            content: Text(
-                "Maps Imported: $importedMaps\nTotal maps now stored: $totalMaps"),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  child: const Text("OK"),
+          builder:
+              (ctx) => AlertDialog(
+                title: const Text("New map metafile created"),
+                content: Text(
+                  "Maps Imported: $importedMaps\nTotal maps now stored: $totalMaps",
                 ),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      child: const Text("OK"),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
         );
       }
       // }
@@ -197,6 +211,32 @@ class MyAppState extends State<MyApp> {
     }
   }
 
+  Future<void> copyGpxFilesToCache(String sourcePath, String destPath) async {
+    final sourceDir = Directory(sourcePath);
+    final destDir = await Directory(destPath);
+    ;
+
+    if (!await sourceDir.exists()) return;
+
+    final files =
+        sourceDir
+            .listSync()
+            .where(
+              (f) =>
+                  f is File &&
+                  (f.path.toLowerCase().endsWith('.xml') ||
+                      f.path.toLowerCase().endsWith('.gpx')),
+            )
+            .cast<File>();
+
+    for (final file in files) {
+      final fileName = file.uri.pathSegments.last;
+      final dest = File('${destDir.path}/$fileName');
+
+      await dest.writeAsBytes(await file.readAsBytes());
+    }
+  }
+
   Future<void> _loadCachedMapFiles() async {
     //Process CSV file holding details of maps held in application cache
     if (_settings.mapDir == null) {
@@ -205,17 +245,23 @@ class MyAppState extends State<MyApp> {
       await Directory(destdirectory).create(recursive: true);
       _settings.mapDir = destdirectory;
     }
-    File cacheCsvFile =
-        File("${_settings.mapDir}/${MapAppSettings.mapCsvFile}");
+    File cacheCsvFile = File(
+      "${_settings.mapDir}/${MapAppSettings.mapCsvFile}",
+    );
     if (await cacheCsvFile.exists()) {
       final cacheCsv = cacheCsvFile.openRead();
       const settings = FirstOccurrenceSettingsDetector(
-          eols: ['\r\n', '\n'], textDelimiters: ['"', "'"]);
+        eols: ['\r\n', '\n'],
+        textDelimiters: ['"', "'"],
+      );
 
-      List cacheFields = await cacheCsv
-          .transform(utf8.decoder)
-          .transform(const CsvToListConverter(csvSettingsDetector: settings))
-          .toList();
+      List cacheFields =
+          await cacheCsv
+              .transform(utf8.decoder)
+              .transform(
+                const CsvToListConverter(csvSettingsDetector: settings),
+              )
+              .toList();
       bool firstRow = true;
       for (var row in cacheFields) {
         if (firstRow) {
@@ -287,7 +333,7 @@ class MyAppState extends State<MyApp> {
     double rightOverlap = 0;
     double aboveOverlap = 0;
     double belowOverlap = 0;
-    if (mapToSet.fileName != "DefaultMap") {
+    if (mapToSet.fileName != "world.jpg") {
       for (MapData map in _settings.mapFilesMetadata) {
         if (map == mapToSet) continue;
         double overlap = map.isLeftOf(mapToSet);
@@ -337,22 +383,30 @@ class MyAppState extends State<MyApp> {
   }
 
   _setPoint(MapData mapOnShow, Offset offset) {
-    RenderBox? imageRenderBox =
-        _imageKey.currentContext?.findRenderObject() as RenderBox?;
-    if (imageRenderBox == null) return;
-    Size imageSize = imageRenderBox.size;
-    _selectedPoint = offset;
-    setState(() {
-      _selectedPosition = mapOnShow.calculatePosition(
-          offset.dx, offset.dy, imageSize.width, imageSize.height);
-      if (_currentPosition != null && _selectedPosition != null) {
-        _distance = calculateDistance(
+    if (_panMap == null || _currentPosition == null) {
+      //To prevent resetting selection point when panning around, only allow it to be set if not already set when panning
+      RenderBox? imageRenderBox =
+          _imageKey.currentContext?.findRenderObject() as RenderBox?;
+      if (imageRenderBox == null) return;
+      Size imageSize = imageRenderBox.size;
+      _selectedPoint = offset;
+      setState(() {
+        _selectedPosition = mapOnShow.calculatePosition(
+          offset.dx,
+          offset.dy,
+          imageSize.width,
+          imageSize.height,
+        );
+        if (_currentPosition != null && _selectedPosition != null) {
+          _distance = calculateDistance(
             _currentPosition!.latitude,
             _currentPosition!.longitude,
             _selectedPosition!.latitude,
-            _selectedPosition!.longitude);
-      }
-    });
+            _selectedPosition!.longitude,
+          );
+        }
+      });
+    }
   }
 
   _getCurrentLocation() async {
@@ -381,17 +435,19 @@ class MyAppState extends State<MyApp> {
           throw Exception('Location permissions are permanently denied.');
         }
 
-        Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
-            .then((Position position) {
+        Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        ).then((Position position) {
           setState(() {
             _currentPosition = position;
             _lastUpdate = DateTime.now();
             if (_selectedPosition != null) {
               _distance = calculateDistance(
-                  _currentPosition!.latitude,
-                  _currentPosition!.longitude,
-                  _selectedPosition!.latitude,
-                  _selectedPosition!.longitude);
+                _currentPosition!.latitude,
+                _currentPosition!.longitude,
+                _selectedPosition!.latitude,
+                _selectedPosition!.longitude,
+              );
             }
             _getBestMaps();
             _positionController.text =
@@ -404,7 +460,8 @@ class MyAppState extends State<MyApp> {
             _settings.isManualEnabled = true;
           });
           _showGPSFailureDialog(
-              "Failed to retrieve GPS coords ${e.toString()}");
+            "Failed to retrieve GPS coords ${e.toString()}",
+          );
         }
       }
     }
@@ -413,10 +470,14 @@ class MyAppState extends State<MyApp> {
           _imageKey.currentContext?.findRenderObject() as RenderBox?;
       if (imageRenderBox == null) return;
       Size imageSize = imageRenderBox.size;
-      double top = _currentMaps[_currentMapIndex]
-          .calculateTop(_selectedPosition!, imageSize.height);
-      double left = _currentMaps[_currentMapIndex]
-          .calculateLeft(_selectedPosition!, imageSize.width);
+      double top = _currentMaps[_currentMapIndex].calculateTop(
+        _selectedPosition!,
+        imageSize.height,
+      );
+      double left = _currentMaps[_currentMapIndex].calculateLeft(
+        _selectedPosition!,
+        imageSize.width,
+      );
       if (mounted) {
         setState(() {
           _selectedPoint = Offset(left, top);
@@ -448,10 +509,11 @@ class MyAppState extends State<MyApp> {
         );
         if (_selectedPosition != null) {
           _distance = calculateDistance(
-              _currentPosition!.latitude,
-              _currentPosition!.longitude,
-              _selectedPosition!.latitude,
-              _selectedPosition!.longitude);
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+            _selectedPosition!.latitude,
+            _selectedPosition!.longitude,
+          );
         }
       }
     }
@@ -530,20 +592,20 @@ class MyAppState extends State<MyApp> {
         //Get size of the painted box
         // Offset totalBoxSize = imageRenderBox.paintBounds.bottomRight;
         Size totalBoxSize = imageRenderBox.size;
-        double top =
-            currentMap.calculateTop(_selectedPosition!, totalBoxSize.height);
-        double left =
-            currentMap.calculateLeft(_selectedPosition!, totalBoxSize.width);
+        double top = currentMap.calculateTop(
+          _selectedPosition!,
+          totalBoxSize.height,
+        );
+        double left = currentMap.calculateLeft(
+          _selectedPosition!,
+          totalBoxSize.width,
+        );
 
         _selectedPoint = Offset(left, top);
         retWidget = Positioned(
           left: _selectedPoint!.dx - 20,
           top: _selectedPoint!.dy - 40,
-          child: const Icon(
-            Icons.location_on,
-            color: Colors.blue,
-            size: 40,
-          ),
+          child: const Icon(Icons.location_on, color: Colors.blue, size: 40),
         );
       }
     }
@@ -568,10 +630,14 @@ class MyAppState extends State<MyApp> {
     //   _updatePosition();
     // }
     if (_currentPosition != null) {
-      double top =
-          currentMap.calculateTop(_currentPosition!, totalBoxSize.height);
-      double left =
-          currentMap.calculateLeft(_currentPosition!, totalBoxSize.width);
+      double top = currentMap.calculateTop(
+        _currentPosition!,
+        totalBoxSize.height,
+      );
+      double left = currentMap.calculateLeft(
+        _currentPosition!,
+        totalBoxSize.width,
+      );
 
       Offset fixedPoint = Offset(left, top);
 
@@ -579,16 +645,19 @@ class MyAppState extends State<MyApp> {
       //     "Lat: ${_currentPosition!.latitude}  Long: ${_currentPosition!.longitude}");
 
       Color positionColor = Colors.red;
-      if (_lastUpdate
-          .isBefore(DateTime.now().subtract(const Duration(seconds: 180)))) {
+      if (_lastUpdate.isBefore(
+        DateTime.now().subtract(const Duration(seconds: 180)),
+      )) {
         //If last update was more than 30 SECS ago, show position in orange
         positionColor = Colors.grey;
-      } else if (_lastUpdate
-          .isBefore(DateTime.now().subtract(const Duration(seconds: 60)))) {
+      } else if (_lastUpdate.isBefore(
+        DateTime.now().subtract(const Duration(seconds: 60)),
+      )) {
         //If last update was more than 1 minute ago, show position in yellow
         positionColor = Colors.yellow;
-      } else if (_lastUpdate
-          .isBefore(DateTime.now().subtract(const Duration(seconds: 30)))) {
+      } else if (_lastUpdate.isBefore(
+        DateTime.now().subtract(const Duration(seconds: 30)),
+      )) {
         //If last update was more than 3 mins ago, show position as grey (i.e. last known position)
         positionColor = Colors.orange;
       }
@@ -663,200 +732,251 @@ class MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (_panMap == _currentMaps[_currentMapIndex]) {
+      _panMap = null;
+    }
     MapData mapToShow = _panMap ?? _currentMaps[_currentMapIndex];
     return MaterialApp(
       home: Builder(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Paper Maps'),
-            actions: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Refresh GPS',
-                    onPressed: () {
-                      setState(() {
-                        _getCurrentLocation();
-                      });
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.clear),
-                    tooltip: 'Clear',
-                    onPressed: () {
-                      setState(() {
-                        _selectedPosition = null;
-                        _selectedPoint = null;
-                        _distance = 0;
-                        _panMap = null;
-                      });
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_upward),
-                    tooltip: 'Scale Up',
-                    onPressed: _currentMapIndex < _currentMaps.length - 1
-                        ? () {
-                            setState(() {
-                              _currentMapIndex++;
-                            });
-                            Future.delayed(const Duration(milliseconds: 1500),
-                                _getCurrentLocation);
-                          }
-                        : null,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_downward),
-                    tooltip: 'Scale Down',
-                    onPressed: _currentMapIndex > 0
-                        ? () {
-                            setState(() {
-                              _currentMapIndex--;
-                            });
-                            Future.delayed(const Duration(milliseconds: 1500),
-                                _getCurrentLocation);
-                          }
-                        : null,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.settings),
-                    tooltip: 'Settings',
-                    onPressed: () async {
-                      _settings.csvFileToImport = null;
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                SettingsScreen(settings: _settings)),
-                      );
-                      setState(() {
-                        if (_settings.csvFileToImport != null) {
-                          Future.delayed(
-                              const Duration(seconds: 1),
-                              () => _importCSVFile(
-                                  context, _settings.csvFileToImport));
-                        }
-                      });
-                    },
+        builder:
+            (context) => Scaffold(
+              appBar: AppBar(
+                title: const Text('Paper Maps'),
+                actions: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'Refresh GPS',
+                        onPressed: () {
+                          setState(() {
+                            _getCurrentLocation();
+                          });
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.clear),
+                        tooltip: 'Clear',
+                        onPressed: () {
+                          setState(() {
+                            _selectedPosition = null;
+                            _selectedPoint = null;
+                            _distance = 0;
+                            _panMap = null;
+                            _settings.trackPoints.clear();
+                          });
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_upward),
+                        tooltip: 'Scale Up',
+                        onPressed:
+                            _currentMapIndex < _currentMaps.length - 1
+                                ? () {
+                                  setState(() {
+                                    _panMap = null;
+                                    _currentMapIndex++;
+                                  });
+                                  Future.delayed(
+                                    const Duration(milliseconds: 1500),
+                                    _getCurrentLocation,
+                                  );
+                                }
+                                : null,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_downward),
+                        tooltip: 'Scale Down',
+                        onPressed:
+                            _currentMapIndex > 0
+                                ? () {
+                                  setState(() {
+                                    _currentMapIndex--;
+                                  });
+                                  Future.delayed(
+                                    const Duration(milliseconds: 1500),
+                                    _getCurrentLocation,
+                                  );
+                                }
+                                : null,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.settings),
+                        tooltip: 'Settings',
+                        onPressed: () async {
+                          _settings.csvFileToImport = null;
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (context) =>
+                                      SettingsScreen(settings: _settings),
+                            ),
+                          );
+                          setState(() {
+                            if (_settings.csvFileToImport != null) {
+                              Future.delayed(
+                                const Duration(seconds: 1),
+                                () => _importCSVFile(
+                                  context,
+                                  _settings.csvFileToImport,
+                                ),
+                              );
+                            }
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-          body: Column(
-            children: [
-              if (_settings.isManualEnabled) ...[
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    controller: _positionController,
-                    keyboardType: TextInputType.text,
-                    decoration: const InputDecoration(
-                        labelText:
-                            'Enter Manual Position (Latitude,Longitude)'),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    _lastUpdate = DateTime.now();
-                    setState(() {
-                      _getCurrentLocation();
-                    });
-                  },
-                  child: const Text('Update Position'),
-                ),
-              ],
-              if (_settings.showPosition) ...{
-                Row(
-                  children: [
+              body: Column(
+                children: [
+                  if (_settings.isManualEnabled) ...[
                     Padding(
                       padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        _currentPosition != null
-                            ? '${_currentPosition!.latitude.toStringAsFixed(6)},${_currentPosition!.longitude.toStringAsFixed(6)}'
-                            : "Not Set",
-                        style: const TextStyle(color: Colors.red),
+                      child: TextField(
+                        controller: _positionController,
+                        keyboardType: TextInputType.text,
+                        decoration: const InputDecoration(
+                          labelText:
+                              'Enter Manual Position (Latitude,Longitude)',
+                        ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                          _selectedPosition != null
-                              ? '${_selectedPosition!.latitude.toStringAsFixed(6)},${_selectedPosition!.longitude.toStringAsFixed(6)}'
-                              : '',
-                          style: const TextStyle(color: Colors.blue)),
+                    ElevatedButton(
+                      onPressed: () {
+                        _lastUpdate = DateTime.now();
+                        setState(() {
+                          _getCurrentLocation();
+                        });
+                      },
+                      child: const Text('Update Position'),
                     ),
-                    if (_distance != 0) ...{
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text('Dist: ${_distance.toStringAsFixed(2)} km',
-                            style: const TextStyle(color: Colors.green)),
-                      ),
-                    },
                   ],
-                )
-              },
-              Expanded(
-                child:
+                  if (_settings.showPosition) ...{
+                    Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            _currentPosition != null
+                                ? '${_currentPosition!.latitude.toStringAsFixed(6)},${_currentPosition!.longitude.toStringAsFixed(6)}'
+                                : "Not Set",
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            _selectedPosition != null
+                                ? '${_selectedPosition!.latitude.toStringAsFixed(6)},${_selectedPosition!.longitude.toStringAsFixed(6)}'
+                                : '',
+                            style: const TextStyle(color: Colors.blue),
+                          ),
+                        ),
+                        if (_distance != 0) ...{
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              'Dist: ${_distance.toStringAsFixed(2)} km',
+                              style: const TextStyle(color: Colors.green),
+                            ),
+                          ),
+                        },
+                      ],
+                    ),
+                  },
+                  Expanded(
+                    child:
                     //  _currentPosition == null
                     //       ? Center(child: CircularProgressIndicator())
                     //       :
-                    LayoutBuilder(builder: (context, constraints) {
-                  return Center(
-                      child: GestureDetector(
-                    onTapDown: (details) {
-                      _setPoint(mapToShow, details.localPosition);
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: InteractiveViewer(
-                      // transformationController: _transformationController,
-                      // boundaryMargin: EdgeInsets.all(20.0),
-                      minScale: 0.1,
-                      maxScale: 4.0,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Positioned(
-                            key: _imageKey,
-                            top: 0,
-                            left: 0,
-                            child: Container(
-                              constraints: BoxConstraints(
-                                  maxWidth: constraints.maxWidth,
-                                  maxHeight: constraints.maxHeight),
-                              child: mapToShow.fileName != "DefaultMap"
-                                  ? Image.file(File(mapToShow.fileName),
-                                      // width: constraints.maxWidth,
-                                      // height: constraints.maxHeight,
-                                      cacheWidth:
-                                          constraints.maxWidth.toInt() * 4,
-                                      cacheHeight:
-                                          constraints.maxHeight.toInt() * 4,
-                                      fit: BoxFit.contain)
-                                  : Image.asset(
-                                      MapAppSettings.defaultMapAssetName,
-                                      // width: constraints.maxWidth,
-                                      // height: constraints.maxHeight,
-                                      // cacheWidth:
-                                      //     constraints.maxWidth.toInt() * 4,
-                                      // cacheHeight:
-                                      //     constraints.maxHeight.toInt() * 4,
-                                      fit: BoxFit.contain),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Center(
+                          child: GestureDetector(
+                            onTapDown: (details) {
+                              _setPoint(mapToShow, details.localPosition);
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: InteractiveViewer(
+                              // transformationController: _transformationController,
+                              // boundaryMargin: EdgeInsets.all(20.0),
+                              minScale: 0.1,
+                              maxScale: 4.0,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Positioned(
+                                    key: _imageKey,
+                                    top: 0,
+                                    left: 0,
+                                    child: Container(
+                                      constraints: BoxConstraints(
+                                        maxWidth: constraints.maxWidth,
+                                        maxHeight: constraints.maxHeight,
+                                      ),
+                                      child:
+                                          mapToShow.fileName != "DefaultMap"
+                                              ? Image.file(
+                                                File(mapToShow.fileName),
+                                                // width: constraints.maxWidth,
+                                                // height: constraints.maxHeight,
+                                                cacheWidth:
+                                                    constraints.maxWidth
+                                                        .toInt() *
+                                                    4,
+                                                cacheHeight:
+                                                    constraints.maxHeight
+                                                        .toInt() *
+                                                    4,
+                                                fit: BoxFit.contain,
+                                              )
+                                              : null,
+                                      // : const Image(
+                                      //   image: AssetImage(
+                                      //     'assets/appicon.png',
+                                      //   ),
+                                      //   // width: constraints.maxWidth,
+                                      //   // height: constraints.maxHeight,
+                                      //   // cacheWidth:
+                                      //   //     constraints.maxWidth.toInt() * 4,
+                                      //   // cacheHeight:
+                                      //   //     constraints.maxHeight.toInt() * 4,
+                                      //   fit: BoxFit.contain,
+                                      // ),
+                                    ),
+                                  ),
+                                  if (_settings.trackPoints.isNotEmpty)
+                                    CustomPaint(
+                                      size: Size(
+                                        constraints.maxWidth,
+                                        constraints.maxHeight,
+                                      ),
+                                      painter: GpxTrailPainter(
+                                        points: _settings.trackPoints,
+                                        hightlightedPoint: 0,
+                                        imageWidth: constraints.maxWidth,
+                                        imageHeight: constraints.maxHeight,
+                                        mapData: mapToShow,
+                                      ),
+                                    ),
+
+                                  _buildFixedIcon(mapToShow),
+                                  _buildSetPointIcon(mapToShow),
+                                  _buildInfoBoxes(mapToShow),
+                                ],
+                              ),
                             ),
                           ),
-                          _buildFixedIcon(mapToShow),
-                          _buildSetPointIcon(mapToShow),
-                          _buildInfoBoxes(mapToShow),
-                        ],
-                      ),
+                        );
+                      },
                     ),
-                  ));
-                }),
-              )
-            ],
-          ),
-        ),
+                  ),
+                ],
+              ),
+            ),
       ),
     );
   }
@@ -872,17 +992,21 @@ class MyAppState extends State<MyApp> {
       //Get size of the painted box
       // Offset totalBoxSize = imageRenderBox.paintBounds.bottomRight;
       Size totalBoxSize = imageRenderBox.size;
-      isTopQuarter = _currentMaps[_currentMapIndex]
-              .calculateTop(_currentPosition!, totalBoxSize.height) <
+      isTopQuarter =
+          _currentMaps[_currentMapIndex].calculateTop(
+            _currentPosition!,
+            totalBoxSize.height,
+          ) <
           (totalBoxSize.height / 4);
     }
     double distInfoPos =
         (_settings.showAltitude && !_settings.isManualEnabled) ? 40 : 5;
-    double panOffset = _distance != 0
-        ? (_settings.showAltitude && !_settings.isManualEnabled
-            ? (distInfoPos * 2) - 5
-            : (distInfoPos * 2) + 30)
-        : distInfoPos;
+    double panOffset =
+        _distance != 0
+            ? (_settings.showAltitude && !_settings.isManualEnabled
+                ? (distInfoPos * 2) - 5
+                : (distInfoPos * 2) + 30)
+            : distInfoPos;
 
     return Stack(
       fit: StackFit.expand,
@@ -900,10 +1024,7 @@ class MyAppState extends State<MyApp> {
               ),
               child: Text(
                 'Altitude: ${_currentPosition?.altitude.toStringAsFixed(2)} m',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
           ),
@@ -921,30 +1042,33 @@ class MyAppState extends State<MyApp> {
               ),
               child: Text(
                 'Distance: ${_distance.toStringAsFixed(2)} km',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
           ),
         },
         if (_settings.showPan) ...{
-          _buildArrowButtons(currentMap, isTopQuarter ? null : panOffset,
-              isTopQuarter ? panOffset : null),
+          _buildArrowButtons(
+            currentMap,
+            isTopQuarter ? null : panOffset,
+            isTopQuarter ? panOffset : null,
+          ),
         },
       ],
     );
   }
 
   Widget _buildArrowButtons(
-      MapData currentMap, double? topSep, double? bottomSep) {
+    MapData currentMap,
+    double? topSep,
+    double? bottomSep,
+  ) {
     return Positioned(
       top: topSep,
       bottom: bottomSep,
       right: 5,
       child: GestureDetector(
-        onTap: () {
+        onTapDown: (details) {
           // Absorb the tap event so it doesn't propagate to the parent GestureDetector
         },
         behavior: HitTestBehavior.translucent,
@@ -959,25 +1083,41 @@ class MyAppState extends State<MyApp> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildArrowButton(currentMap, Icons.arrow_circle_up,
-                      currentMap.mapAbove != null, PanDirection.up),
+                  _buildArrowButton(
+                    currentMap,
+                    Icons.arrow_circle_up,
+                    currentMap.mapAbove != null,
+                    PanDirection.up,
+                  ),
                 ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildArrowButton(currentMap, Icons.arrow_circle_left,
-                      currentMap.mapLeft != null, PanDirection.left),
+                  _buildArrowButton(
+                    currentMap,
+                    Icons.arrow_circle_left,
+                    currentMap.mapLeft != null,
+                    PanDirection.left,
+                  ),
                   const SizedBox(width: 5),
-                  _buildArrowButton(currentMap, Icons.arrow_circle_right,
-                      currentMap.mapRight != null, PanDirection.right),
+                  _buildArrowButton(
+                    currentMap,
+                    Icons.arrow_circle_right,
+                    currentMap.mapRight != null,
+                    PanDirection.right,
+                  ),
                 ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildArrowButton(currentMap, Icons.arrow_circle_down,
-                      currentMap.mapBelow != null, PanDirection.down),
+                  _buildArrowButton(
+                    currentMap,
+                    Icons.arrow_circle_down,
+                    currentMap.mapBelow != null,
+                    PanDirection.down,
+                  ),
                 ],
               ),
             ],
@@ -987,17 +1127,22 @@ class MyAppState extends State<MyApp> {
     );
   }
 
-  Widget _buildArrowButton(MapData currentMap, IconData icon, bool isEnabled,
-      PanDirection arrowPressed) {
+  Widget _buildArrowButton(
+    MapData currentMap,
+    IconData icon,
+    bool isEnabled,
+    PanDirection arrowPressed,
+  ) {
     return IgnorePointer(
       ignoring: false,
       child: IconButton(
         icon: Icon(icon),
         iconSize: 35,
         color: isEnabled ? Colors.white : Colors.grey,
-        onPressed: isEnabled
-            ? () => _handleArrowPress(currentMap, arrowPressed)
-            : null,
+        onPressed:
+            isEnabled
+                ? () => _handleArrowPress(currentMap, arrowPressed)
+                : null,
       ),
     );
   }

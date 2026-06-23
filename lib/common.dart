@@ -47,12 +47,7 @@ Future<List<TrackPoint>> parseGpxTrackPoints(String gpxXml) async {
         timeElement != null ? DateTime.parse(timeElement.text) : DateTime.now();
 
     points.add(
-      TrackPoint(
-        lat: lat,
-        lon: lon,
-        elevation: elevation,
-        time: time,
-      ),
+      TrackPoint(lat: lat, lon: lon, elevation: elevation, time: time),
     );
   }
 
@@ -62,7 +57,7 @@ Future<List<TrackPoint>> parseGpxTrackPoints(String gpxXml) async {
 class MapAppSettings {
   static const String mapCsvFile = 'mapdata.csv';
   static const String localMapDir = 'papermaps';
-  static const String defaultMapAssetName = 'assets/maps/general-map.jpg';
+  static const String defaultMapAssetName = 'assets/generalmap.png';
 
   bool isManualEnabled = false;
   bool isCompassPointerEnabled = false;
@@ -76,14 +71,16 @@ class MapAppSettings {
   MapAppSettings(manual) {
     isManualEnabled = manual;
   }
+  List<TrackPoint> trackPoints = [];
 
   static Future<Directory> getRootDirectory() async {
     Directory? rootdir;
     try {
       if (await Permission.manageExternalStorage.request().isGranted) {
         rootdir = await getExternalStorageDirectory();
-        //If we get to here, we are on an Android device, so set the Doc directory manually
-        rootdir = Directory('/storage/emulated/0/Documents');
+        //If we get to here and directory is null, set the Doc directory manually
+        print('Root dir = $rootdir');
+        rootdir ??= Directory('/storage/emulated/0/Documents');
       } else {
         print("Failed to get permission to manage external storage");
       }
@@ -126,7 +123,8 @@ class MapData {
     const csvCreator = ListToCsvConverter();
     StringBuffer sb = StringBuffer();
     sb.writeln(
-        '"Filename", "TopLeftLat", "TopLeftLong", "BotRightLat", "BotRightLon", "Quality"');
+      '"Filename", "TopLeftLat", "TopLeftLong", "BotRightLat", "BotRightLon", "Quality"',
+    );
     int totalMaps = 0;
     for (MapData map in settings.mapFilesMetadata) {
       csvCreator.convertSingleRow(
@@ -139,8 +137,9 @@ class MapData {
       totalMaps++;
     }
     //Write new csv file
-    final File cacheCsvFile =
-        File(path.join(settings.mapDir!, MapAppSettings.mapCsvFile));
+    final File cacheCsvFile = File(
+      path.join(settings.mapDir!, MapAppSettings.mapCsvFile),
+    );
     cacheCsvFile.writeAsStringSync(sb.toString(), flush: true);
     return totalMaps;
   }
@@ -216,10 +215,12 @@ class MapData {
     bool result = false;
 
     if (point != null) {
-      bool withinLatBounds = (point.latitude <= topLeft.latitude &&
-          point.latitude >= bottomRight.latitude);
-      bool withinLonBounds = (point.longitude >= topLeft.longitude &&
-          point.longitude <= bottomRight.longitude);
+      bool withinLatBounds =
+          (point.latitude <= topLeft.latitude &&
+              point.latitude >= bottomRight.latitude);
+      bool withinLonBounds =
+          (point.longitude >= topLeft.longitude &&
+              point.longitude <= bottomRight.longitude);
 
       result = withinLatBounds && withinLonBounds;
     }
@@ -231,15 +232,19 @@ class MapData {
     if (map.quality == quality) {
       double allowedLongitudeRange =
           (map.topLeft.longitude - map.bottomRight.longitude).abs() / 2;
-      bool leftMostEdge = bottomRight.longitude >=
+      bool leftMostEdge =
+          bottomRight.longitude >=
           (map.topLeft.longitude - allowedLongitudeRange);
       bool rightMostEdge = (bottomRight.longitude <= map.bottomRight.longitude);
       //Check latitude overlap
-      bool topEdge = bottomRight.latitude <= map.topLeft.latitude &&
+      bool topEdge =
+          bottomRight.latitude <= map.topLeft.latitude &&
           bottomRight.latitude >= map.bottomRight.latitude;
-      bool bottomEdge = topLeft.latitude >= map.bottomRight.latitude &&
+      bool bottomEdge =
+          topLeft.latitude >= map.bottomRight.latitude &&
           topLeft.latitude <= map.topLeft.latitude;
-      bool completeOverlap = topLeft.latitude >= map.topLeft.latitude &&
+      bool completeOverlap =
+          topLeft.latitude >= map.topLeft.latitude &&
           bottomRight.latitude <= map.bottomRight.latitude;
       if (leftMostEdge &&
           rightMostEdge &&
@@ -274,14 +279,18 @@ class MapData {
       double allowedLongitudeRange =
           (map.topLeft.longitude - map.bottomRight.longitude).abs() / 2;
       bool leftMostEdge = topLeft.longitude >= map.topLeft.longitude;
-      bool rightMostEdge = topLeft.longitude <=
+      bool rightMostEdge =
+          topLeft.longitude <=
           (map.bottomRight.longitude + allowedLongitudeRange);
       //Check latitude overlap
-      bool topEdge = bottomRight.latitude <= map.topLeft.latitude &&
+      bool topEdge =
+          bottomRight.latitude <= map.topLeft.latitude &&
           bottomRight.latitude >= map.bottomRight.latitude;
-      bool bottomEdge = topLeft.latitude >= map.bottomRight.latitude &&
+      bool bottomEdge =
+          topLeft.latitude >= map.bottomRight.latitude &&
           topLeft.latitude <= map.topLeft.latitude;
-      bool completeOverlap = topLeft.latitude >= map.topLeft.latitude &&
+      bool completeOverlap =
+          topLeft.latitude >= map.topLeft.latitude &&
           bottomRight.latitude <= map.bottomRight.latitude;
       if (leftMostEdge &&
           rightMostEdge &&
@@ -315,11 +324,14 @@ class MapData {
     if (map.quality == quality) {
       double allowedLatitudeRange =
           (map.topLeft.latitude - map.bottomRight.latitude).abs() / 2;
-      bool leftMostEdge = bottomRight.longitude >= map.topLeft.longitude &&
+      bool leftMostEdge =
+          bottomRight.longitude >= map.topLeft.longitude &&
           bottomRight.longitude <= map.bottomRight.longitude;
-      bool rightMostEdge = map.bottomRight.longitude >= topLeft.longitude &&
+      bool rightMostEdge =
+          map.bottomRight.longitude >= topLeft.longitude &&
           topLeft.longitude >= map.topLeft.longitude;
-      bool completeOverlap = topLeft.longitude <= map.topLeft.longitude &&
+      bool completeOverlap =
+          topLeft.longitude <= map.topLeft.longitude &&
           bottomRight.longitude >= map.bottomRight.longitude;
       bool lowerEdge = bottomRight.latitude >= map.bottomRight.latitude;
       bool upperEdge =
@@ -355,11 +367,14 @@ class MapData {
     if (map.quality == quality) {
       double allowedLatitudeRange =
           (map.topLeft.latitude - map.bottomRight.latitude).abs() / 2;
-      bool leftMostEdge = bottomRight.longitude >= map.topLeft.longitude &&
+      bool leftMostEdge =
+          bottomRight.longitude >= map.topLeft.longitude &&
           bottomRight.longitude <= map.bottomRight.longitude;
-      bool rightMostEdge = map.bottomRight.longitude >= topLeft.longitude &&
+      bool rightMostEdge =
+          map.bottomRight.longitude >= topLeft.longitude &&
           topLeft.longitude >= map.topLeft.longitude;
-      bool completeOverlap = topLeft.longitude <= map.topLeft.longitude &&
+      bool completeOverlap =
+          topLeft.longitude <= map.topLeft.longitude &&
           bottomRight.longitude >= map.bottomRight.longitude;
       bool lowerEdge =
           topLeft.latitude >= (map.bottomRight.latitude - allowedLatitudeRange);
@@ -415,10 +430,16 @@ class MapData {
   }
 
   Position calculatePosition(
-      double x, double y, double imageWidth, double imageHeight) {
-    final double latitude = bottomRight.latitude +
+    double x,
+    double y,
+    double imageWidth,
+    double imageHeight,
+  ) {
+    final double latitude =
+        bottomRight.latitude +
         ((1 - (y / imageHeight)) * (topLeft.latitude - bottomRight.latitude));
-    final double longitude = topLeft.longitude +
+    final double longitude =
+        topLeft.longitude +
         ((x / imageWidth) * (bottomRight.longitude - topLeft.longitude));
     return Position(
       latitude: latitude,
@@ -434,8 +455,16 @@ class MapData {
     );
   }
 
-  void calibrate(Position topL, double tlx, double tly, Position bottomR,
-      double brx, double bry, double width, double height) {
+  void calibrate(
+    Position topL,
+    double tlx,
+    double tly,
+    Position bottomR,
+    double brx,
+    double bry,
+    double width,
+    double height,
+  ) {
     double calwidth = brx - tlx;
     double calheight = bry - tly;
     double calLatrange = topL.latitude - bottomR.latitude;
@@ -591,7 +620,8 @@ double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
   double dLon = degreesToRadians(lon2 - lon1);
 
   // Apply Haversine formula
-  double a = pow(sin(dLat / 2), 2) +
+  double a =
+      pow(sin(dLat / 2), 2) +
       cos(degreesToRadians(lat1)) *
           cos(degreesToRadians(lat2)) *
           pow(sin(dLon / 2), 2);
