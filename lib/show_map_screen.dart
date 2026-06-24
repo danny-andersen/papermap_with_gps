@@ -138,6 +138,37 @@ class ShowMapScreenState extends State<ShowMapScreen> {
     }
   }
 
+  Widget _showGPXTrail() {
+    Widget retWidget = const SizedBox();
+    if (_trackPoints.isNotEmpty && _currentMap != null) {
+      RenderBox? imageRenderBox =
+          _imageKey.currentContext?.findRenderObject() as RenderBox?;
+      if (imageRenderBox != null) {
+        //Get size of the painted box
+        // Offset totalBoxSize = imageRenderBox.paintBounds.bottomRight;
+        Size totalBoxSize = imageRenderBox.size;
+        // Coordinates of the fixed point on the original image
+        // double top = _calculateTop(_currentPosition!, totalBoxSize.dy);
+        // double left = _calculateLeft(_currentPosition!, totalBoxSize.dx);
+        // if (_settings.isManualEnabled) {
+        //   //Get latest position coords before displaying
+        //   _updatePosition();
+        // }
+        retWidget = CustomPaint(
+          size: Size(totalBoxSize.width, totalBoxSize.height),
+          painter: GpxTrailPainter(
+            points: _trackPoints,
+            hightlightedPoint: _highlightedGPXpoint,
+            imageWidth: totalBoxSize.width,
+            imageHeight: totalBoxSize.height,
+            mapData: _currentMap!,
+          ),
+        );
+      }
+    }
+    return retWidget;
+  }
+
   void _setPointOffsets() {
     //Calculates new icon offsets when map is updated based on the lat long previously set
     if (_currentMap != null) {
@@ -330,17 +361,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
                                       size: 24,
                                     ),
                                   ),
-                                if (_trackPoints.isNotEmpty)
-                                  CustomPaint(
-                                    size: Size(_width!, _height!),
-                                    painter: GpxTrailPainter(
-                                      points: _trackPoints,
-                                      hightlightedPoint: _highlightedGPXpoint,
-                                      imageWidth: _width!,
-                                      imageHeight: _height!,
-                                      mapData: _currentMap!,
-                                    ),
-                                  ),
+                                _showGPXTrail(),
                                 _buildInfoBoxes(),
                               ],
                             ),

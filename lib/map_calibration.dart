@@ -90,8 +90,16 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
 
     _updatePointFromText(_firstPointController, isSecondPoint: false);
     _updatePointFromText(_secondPointController, isSecondPoint: true);
-    _currentMap!.calibrate(_firstPoint!, _firstOffset!.dx, _firstOffset!.dy,
-        _secondPoint!, _secondOffset!.dx, _secondOffset!.dy, _width!, _height!);
+    _currentMap!.calibrate(
+      _firstPoint!,
+      _firstOffset!.dx,
+      _firstOffset!.dy,
+      _secondPoint!,
+      _secondOffset!.dx,
+      _secondOffset!.dy,
+      _width!,
+      _height!,
+    );
     setState(() {
       _canTest = true;
       _canSelect = false;
@@ -152,7 +160,11 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
       _testOffset = Offset(offset.dx, offset.dy);
       if (_currentMap != null) {
         Position testPos = _currentMap!.calculatePosition(
-            _testOffset!.dx, _testOffset!.dy, _width!, _height!);
+          _testOffset!.dx,
+          _testOffset!.dy,
+          _width!,
+          _height!,
+        );
         _testPointController.text =
             '${testPos.latitude.toStringAsFixed(6)}, ${testPos.longitude.toStringAsFixed(6)}';
       }
@@ -171,8 +183,12 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
       if (_firstPoint == null || _secondPoint != null) {
         if (_currentMap != null) {
           _firstOffset = Offset(offset.dx, offset.dy);
-          _firstPoint = _currentMap!
-              .calculatePosition(offset.dx, offset.dy, _width!, _height!);
+          _firstPoint = _currentMap!.calculatePosition(
+            offset.dx,
+            offset.dy,
+            _width!,
+            _height!,
+          );
           _firstPointController.text =
               '${_firstPoint!.latitude.toStringAsFixed(6)}, ${_firstPoint!.longitude.toStringAsFixed(6)}';
         }
@@ -180,8 +196,12 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
       } else if (_secondPoint == null) {
         if (_currentMap != null) {
           _secondOffset = Offset(offset.dx, offset.dy);
-          _secondPoint = _currentMap!
-              .calculatePosition(offset.dx, offset.dy, _width!, _height!);
+          _secondPoint = _currentMap!.calculatePosition(
+            offset.dx,
+            offset.dy,
+            _width!,
+            _height!,
+          );
           _secondPointController.text =
               '${_secondPoint!.latitude.toStringAsFixed(6)}, ${_secondPoint!.longitude.toStringAsFixed(6)}';
           _canCalibrate = true;
@@ -190,8 +210,10 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
     });
   }
 
-  void _updatePointFromText(TextEditingController controller,
-      {required bool isSecondPoint}) {
+  void _updatePointFromText(
+    TextEditingController controller, {
+    required bool isSecondPoint,
+  }) {
     if (_canCalibrate) {
       final regex = RegExp(r'([^,]+), ([^,]+)');
       final match = regex.firstMatch(controller.text);
@@ -249,25 +271,58 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
     }
   }
 
+  Widget _showGPXTrail() {
+    Widget retWidget = const SizedBox();
+    if (_trackPoints.isNotEmpty && _currentMap != null) {
+      RenderBox? imageRenderBox =
+          _imageKey.currentContext?.findRenderObject() as RenderBox?;
+      if (imageRenderBox != null) {
+        //Get size of the painted box
+        // Offset totalBoxSize = imageRenderBox.paintBounds.bottomRight;
+        Size totalBoxSize = imageRenderBox.size;
+        // Coordinates of the fixed point on the original image
+        // double top = _calculateTop(_currentPosition!, totalBoxSize.dy);
+        // double left = _calculateLeft(_currentPosition!, totalBoxSize.dx);
+        // if (_settings.isManualEnabled) {
+        //   //Get latest position coords before displaying
+        //   _updatePosition();
+        // }
+        retWidget = CustomPaint(
+          size: Size(totalBoxSize.width, totalBoxSize.height),
+          painter: GpxTrailPainter(
+            points: _trackPoints,
+            hightlightedPoint: _highlightedGPXpoint,
+            imageWidth: totalBoxSize.width,
+            imageHeight: totalBoxSize.height,
+            mapData: _currentMap!,
+          ),
+        );
+      }
+    }
+    return retWidget;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            'Map Calibrator ${_currentMap != null ? ': ${path.basename(File(_currentMap!.fileName).path)}' : " "}'),
+          'Map Calibrator ${_currentMap != null ? ': ${path.basename(File(_currentMap!.fileName).path)}' : " "}',
+        ),
       ),
       body: Column(
         children: [
           Row(
             children: [
               Expanded(
-                  child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TextField(
-                  controller: _firstPointController,
-                  decoration: const InputDecoration(labelText: 'First Point'),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: _firstPointController,
+                    decoration: const InputDecoration(labelText: 'First Point'),
+                  ),
                 ),
-              )),
+              ),
               Expanded(
                 child: TextField(
                   controller: _secondPointController,
@@ -333,13 +388,14 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
             ],
           ),
           Expanded(
-            child: _imageFile == null
-                ? const Center(child: Text('No Map selected.'))
-                : LayoutBuilder(
-                    builder: (context, constraints) {
-                      _width = constraints.maxWidth;
-                      _height = constraints.maxHeight;
-                      return Focus(
+            child:
+                _imageFile == null
+                    ? const Center(child: Text('No Map selected.'))
+                    : LayoutBuilder(
+                      builder: (context, constraints) {
+                        _width = constraints.maxWidth;
+                        _height = constraints.maxHeight;
+                        return Focus(
                           autofocus: true,
                           onKeyEvent: (node, event) {
                             if (event is KeyDownEvent) {
@@ -370,13 +426,13 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
                             child: Stack(
                               children: [
                                 Image.file(
-                                    key: _imageKey,
-                                    _imageFile!,
-                                    cacheWidth:
-                                        constraints.maxWidth.toInt() * 4,
-                                    cacheHeight:
-                                        constraints.maxHeight.toInt() * 4,
-                                    fit: BoxFit.contain),
+                                  key: _imageKey,
+                                  _imageFile!,
+                                  cacheWidth: constraints.maxWidth.toInt() * 4,
+                                  cacheHeight:
+                                      constraints.maxHeight.toInt() * 4,
+                                  fit: BoxFit.contain,
+                                ),
                                 if (_firstOffset != null)
                                   Positioned(
                                     left: _firstOffset!.dx - 12,
@@ -407,22 +463,13 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
                                       size: 24,
                                     ),
                                   ),
-                                if (_trackPoints.isNotEmpty)
-                                  CustomPaint(
-                                    size: Size(_width!, _height!),
-                                    painter: GpxTrailPainter(
-                                      points: _trackPoints,
-                                      hightlightedPoint: _highlightedGPXpoint,
-                                      imageWidth: _width!,
-                                      imageHeight: _height!,
-                                      mapData: _currentMap!,
-                                    ),
-                                  ),
+                                _showGPXTrail(),
                               ],
                             ),
-                          ));
-                    },
-                  ),
+                          ),
+                        );
+                      },
+                    ),
           ),
         ],
       ),

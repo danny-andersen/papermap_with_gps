@@ -383,7 +383,7 @@ class MyAppState extends State<MyApp> {
   }
 
   _setPoint(MapData mapOnShow, Offset offset) {
-    if (_panMap == null || _currentPosition == null) {
+    if (_panMap == null || _selectedPosition == null) {
       //To prevent resetting selection point when panning around, only allow it to be set if not already set when panning
       RenderBox? imageRenderBox =
           _imageKey.currentContext?.findRenderObject() as RenderBox?;
@@ -730,6 +730,37 @@ class MyAppState extends State<MyApp> {
     return retWidget;
   }
 
+  Widget _showGPXTrail(MapData currentMap) {
+    Widget retWidget = const SizedBox();
+    if (_settings.trackPoints.isNotEmpty) {
+      RenderBox? imageRenderBox =
+          _imageKey.currentContext?.findRenderObject() as RenderBox?;
+      if (imageRenderBox != null) {
+        //Get size of the painted box
+        // Offset totalBoxSize = imageRenderBox.paintBounds.bottomRight;
+        Size totalBoxSize = imageRenderBox.size;
+        // Coordinates of the fixed point on the original image
+        // double top = _calculateTop(_currentPosition!, totalBoxSize.dy);
+        // double left = _calculateLeft(_currentPosition!, totalBoxSize.dx);
+        // if (_settings.isManualEnabled) {
+        //   //Get latest position coords before displaying
+        //   _updatePosition();
+        // }
+        retWidget = CustomPaint(
+          size: Size(totalBoxSize.width, totalBoxSize.height),
+          painter: GpxTrailPainter(
+            points: _settings.trackPoints,
+            hightlightedPoint: 0,
+            imageWidth: totalBoxSize.width,
+            imageHeight: totalBoxSize.height,
+            mapData: currentMap,
+          ),
+        );
+      }
+    }
+    return retWidget;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_panMap == _currentMaps[_currentMapIndex]) {
@@ -948,24 +979,10 @@ class MyAppState extends State<MyApp> {
                                       // ),
                                     ),
                                   ),
-                                  if (_settings.trackPoints.isNotEmpty)
-                                    CustomPaint(
-                                      size: Size(
-                                        constraints.maxWidth,
-                                        constraints.maxHeight,
-                                      ),
-                                      painter: GpxTrailPainter(
-                                        points: _settings.trackPoints,
-                                        hightlightedPoint: 0,
-                                        imageWidth: constraints.maxWidth,
-                                        imageHeight: constraints.maxHeight,
-                                        mapData: mapToShow,
-                                      ),
-                                    ),
-
                                   _buildFixedIcon(mapToShow),
                                   _buildSetPointIcon(mapToShow),
                                   _buildInfoBoxes(mapToShow),
+                                  _showGPXTrail(mapToShow),
                                 ],
                               ),
                             ),
