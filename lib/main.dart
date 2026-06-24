@@ -35,6 +35,7 @@ class MyAppState extends State<MyApp> {
   DateTime _lastUpdate = DateTime(1, 1, 1, 0, 0, 0);
   final TextEditingController _positionController = TextEditingController();
   final GlobalKey _imageKey = GlobalKey();
+  final GlobalKey _panBoxKey = GlobalKey();
   final MapAppSettings _settings = MapAppSettings(false);
   late List<MapData> _currentMaps;
   MapData? _panMap;
@@ -383,7 +384,7 @@ class MyAppState extends State<MyApp> {
   }
 
   _setPoint(MapData mapOnShow, Offset offset) {
-    if (_panMap == null || _selectedPosition == null) {
+    if (!isTapInsideWidget(_panBoxKey, offset)) {
       //To prevent resetting selection point when panning around, only allow it to be set if not already set when panning
       RenderBox? imageRenderBox =
           _imageKey.currentContext?.findRenderObject() as RenderBox?;
@@ -407,6 +408,26 @@ class MyAppState extends State<MyApp> {
         }
       });
     }
+  }
+
+  bool isTapInsideWidget(GlobalKey widgetKey, Offset tapPosition) {
+    final renderBox =
+        widgetKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (renderBox == null) return false;
+
+    RenderBox? imageRenderBox =
+        _imageKey.currentContext?.findRenderObject() as RenderBox?;
+
+    final topLeft = renderBox.localToGlobal(
+      Offset.zero,
+      ancestor: imageRenderBox,
+    );
+    final size = renderBox.size;
+
+    final rect = Rect.fromLTWH(topLeft.dx, topLeft.dy, size.width, size.height);
+
+    return rect.contains(tapPosition);
   }
 
   _getCurrentLocation() async {
@@ -1081,6 +1102,7 @@ class MyAppState extends State<MyApp> {
     double? bottomSep,
   ) {
     return Positioned(
+      key: _panBoxKey,
       top: topSep,
       bottom: bottomSep,
       right: 5,
