@@ -214,8 +214,7 @@ class MyAppState extends State<MyApp> {
 
   Future<void> copyGpxFilesToCache(String sourcePath, String destPath) async {
     final sourceDir = Directory(sourcePath);
-    final destDir = await Directory(destPath);
-    ;
+    final destDir = Directory(destPath);
 
     if (!await sourceDir.exists()) return;
 
@@ -457,7 +456,7 @@ class MyAppState extends State<MyApp> {
         }
 
         Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
+          locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
         ).then((Position position) {
           setState(() {
             _currentPosition = position;
