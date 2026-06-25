@@ -100,7 +100,7 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _loadGPX() async {
+  void _loadGPX({bool add = false}) async {
     final filePath = await FilesystemPicker.openDialog(
       title: 'Pick a GPX file',
       context: context,
@@ -113,7 +113,11 @@ class SettingsScreenState extends State<SettingsScreen> {
     final xmlString = await File(filePath).readAsString();
     final points = await parseGpxTrackPoints(xmlString);
     setState(() {
-      _settings.trackPoints = points;
+      if (!add) {
+        _settings.trackPoints = points;
+      } else {
+        _settings.trackPoints += points;
+      }
     });
   }
 
@@ -250,6 +254,13 @@ class SettingsScreenState extends State<SettingsScreen> {
               child: ElevatedButton(
                 onPressed: _loadGPX,
                 child: const Text('Load GPX file'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ElevatedButton(
+                onPressed: () => _loadGPX(add: true),
+                child: const Text('Add GPX file'),
               ),
             ),
 
