@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:filesystem_picker/filesystem_picker.dart';
 import 'package:path/path.dart' as path;
 
+// Import all necessary files from the original screen
 import 'package:papermap_with_gps/common.dart';
 import 'package:papermap_with_gps/map_calibration.dart';
 import 'package:papermap_with_gps/show_map_screen.dart';
@@ -28,10 +29,11 @@ class SettingsScreenState extends State<SettingsScreen> {
     super.initState();
   }
 
+  // --- Helper Methods (Copied from original) ---
+
   Future<String?> _selectCSVFile(BuildContext context) async {
     String? result;
     Directory? rootdir;
-    // String? exceptionStr;
     rootdir = await MapAppSettings.getRootDirectory();
     if (context.mounted) {
       result = await FilesystemPicker.openDialog(
@@ -53,7 +55,9 @@ class SettingsScreenState extends State<SettingsScreen> {
         builder:
             (ctx) => AlertDialog(
               title: const Text("Warning!"),
-              content: const Text("Are you sure? This will remove all maps"),
+              content: const Text(
+                "Are you sure? This will remove all maps and local data.",
+              ),
               actions: <Widget>[
                 TextButton(
                   onPressed: () async {
@@ -62,7 +66,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                       try {
                         mapFile.deleteSync();
                       } catch (e) {
-                        //Ignore
+                        // Ignore
                       }
                     }
                     Directory? rootdir =
@@ -144,10 +148,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   onPressed: () {
                     Navigator.of(ctx).pop();
                   },
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    child: const Text("OK"),
-                  ),
+                  child: const Text("OK"),
                 ),
               ],
             ),
@@ -155,184 +156,270 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // --- Build Method (Refactored UI) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Application Settings')),
-      body: Center(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Manual Entry'),
-                  Switch(
-                    value: _settings.isManualEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.isManualEnabled = value;
-                      });
-                    },
-                  ),
-                ],
+            const Text(
+              'Viewing Options',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Show Position coords'),
-                  Switch(
-                    value: _settings.showPosition,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.showPosition = value;
-                      });
-                    },
-                  ),
-                ],
+            const SizedBox(height: 10),
+
+            // Switch Settings Group
+            ...[
+              _buildSettingRow(
+                title: 'Manual Entry Mode',
+                value: _settings.isManualEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _settings.isManualEnabled = value;
+                  });
+                },
+              ),
+              _buildSettingRow(
+                title: 'Show Position Coordinates',
+                value: _settings.showPosition,
+                onChanged: (value) {
+                  setState(() {
+                    _settings.showPosition = value;
+                  });
+                },
+              ),
+              _buildSettingRow(
+                title: 'Show Pan Controls',
+                value: _settings.showPan,
+                onChanged: (value) {
+                  setState(() {
+                    _settings.showPan = value;
+                  });
+                },
+              ),
+              _buildSettingRow(
+                title: 'Show Altitude Reading',
+                value: _settings.showAltitude,
+                onChanged: (value) {
+                  setState(() {
+                    _settings.showAltitude = value;
+                  });
+                },
+              ),
+              _buildSettingRow(
+                title: 'Direction Pointer Visible',
+                value: _settings.isCompassPointerEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _settings.isCompassPointerEnabled = value;
+                  });
+                },
+              ),
+            ],
+
+            const Divider(height: 30),
+
+            // Map Data Management Section
+            Text(
+              'Map Data Management',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Show Pan controls'),
-                  Switch(
-                    value: _settings.showPan,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.showPan = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Show Altitude'),
-                  Switch(
-                    value: _settings.showAltitude,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.showAltitude = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Direction Pointer'),
-                  Switch(
-                    value: _settings.isCompassPointerEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _settings.isCompassPointerEnabled = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ElevatedButton(
-                onPressed: _loadGPX,
-                child: const Text('Load GPX file'),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ElevatedButton(
-                onPressed: () => _loadGPX(add: true),
-                child: const Text('Add GPX file'),
+            const SizedBox(height: 10),
+
+            // GPX Loading Actions Group
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'GPX Track Management',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => _loadGPX(add: false),
+                          icon: const Icon(Icons.upload_file),
+                          label: const Text('Load GPX file'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _loadGPX(add: true),
+                          icon: Icon(Icons.add_task),
+                          label: const Text('Add GPX File'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
 
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: ElevatedButton(
-                onPressed: () {
-                  _listMaps();
-                },
-                child: const Text('List Maps'),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: ElevatedButton(
-                onPressed: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ShowMapScreen(settings: _settings),
+            const SizedBox(height: 20),
+
+            // Map Actions Group
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Map Data Operations',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  );
-                },
-                child: const Text('Display map'),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: ElevatedButton(
-                onPressed: () async {
-                  _settings.csvFileToImport = await _selectCSVFile(context);
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                },
-                child: const Text('Import Maps via CSV file'),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: ElevatedButton(
-                onPressed: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              MapCalibrationScreen(settings: _settings),
+                    const SizedBox(height: 10),
+                    GridView.count(
+                      padding: const EdgeInsets.all(8.0),
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _listMaps(),
+                          child: const Text('List Cached Maps'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            _settings.csvFileToImport = await _selectCSVFile(
+                              context,
+                            );
+                            if (context.mounted) {
+                              // Pop logic is better handled by the calling widget,
+                              // but keeping original flow for functional equivalence.
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          child: const Text('Import Maps via CSV'),
+                        ),
+                      ],
                     ),
-                  );
-                },
-                child: const Text('Calibrate maps'),
+                  ],
+                ),
               ),
             ),
+
+            const SizedBox(height: 20),
+
+            // Calibration & Display Actions Group
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Calibration & Viewing',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder:
+                                (context) => ShowMapScreen(settings: _settings),
+                          ),
+                        );
+                      },
+                      child: const Text('Display Map View'),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder:
+                                (context) =>
+                                    MapCalibrationScreen(settings: _settings),
+                          ),
+                        );
+                      },
+                      child: const Text('Run Map Calibration'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Clear Cache Button (Critical Action)
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(vertical: 10.0),
               child: ElevatedButton(
                 onPressed: () {
                   _clearCache();
                 },
-                child: const Text('Clear Map Cache'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text(
+                  '🔥 Clear Entire Map Cache (Danger)',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
+
+            const SizedBox(height: 20),
+
+            // Done Button
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(8.0),
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.of(context).pop();
                 },
                 child: const Text('Done'),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Helper method to build standardized setting rows (Switches)
+  Widget _buildSettingRow({
+    required String title,
+    required ValueChanged<bool> onChanged,
+    required bool value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 16)),
+          Switch(value: value, onChanged: onChanged),
+        ],
       ),
     );
   }
