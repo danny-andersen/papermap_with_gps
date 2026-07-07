@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:filesystem_picker/filesystem_picker.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 // Import all necessary files from the original screen
 import 'package:papermap_with_gps/common.dart';
@@ -70,7 +71,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                       }
                     }
                     Directory? rootdir =
-                        await MapAppSettings.getRootDirectory();
+                        await getApplicationDocumentsDirectory();
                     String destDir = path.join(
                       rootdir.path,
                       MapAppSettings.localMapDir,

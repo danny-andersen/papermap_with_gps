@@ -77,10 +77,10 @@ class MapAppSettings {
     Directory? rootdir;
     try {
       if (await Permission.manageExternalStorage.request().isGranted) {
-        rootdir = await getExternalStorageDirectory();
+        // rootdir = await getDownloadsDirectory();
         //If we get to here and directory is null, set the Doc directory manually
-        print('Root dir = $rootdir');
-        rootdir ??= Directory('/storage/emulated/0/Documents');
+        // print('Root dir = $rootdir');
+        rootdir = Directory('/storage/emulated/0/Documents');
       } else {
         print("Failed to get permission to manage external storage");
       }

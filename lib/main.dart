@@ -240,7 +240,7 @@ class MyAppState extends State<MyApp> {
   Future<void> _loadCachedMapFiles() async {
     //Process CSV file holding details of maps held in application cache
     if (_settings.mapDir == null) {
-      Directory dir = await MapAppSettings.getRootDirectory();
+      Directory dir = await getApplicationDocumentsDirectory();
       String destdirectory = path.join(dir.path, MapAppSettings.localMapDir);
       await Directory(destdirectory).create(recursive: true);
       _settings.mapDir = destdirectory;
