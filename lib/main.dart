@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong_to_osgrid/latlong_to_osgrid.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 
@@ -80,13 +79,6 @@ class MyAppState extends State<MyApp> {
 
   Future<void> _importCSVFile(BuildContext context, String? csvfile) async {
     if (csvfile != null) {
-      if (_settings.mapDir == null) {
-        Directory? dir = await getExternalStorageDirectory();
-        dir ??= await getApplicationDocumentsDirectory();
-        String destdirectory = path.join(dir.path, MapAppSettings.localMapDir);
-        await Directory(destdirectory).create(recursive: true);
-        _settings.mapDir = destdirectory;
-      }
       //Now process the new csv file and add the entries into the existing one
       //copying and new or updated map files at the same time.
       File file = File(csvfile);
@@ -240,13 +232,7 @@ class MyAppState extends State<MyApp> {
 
   Future<void> _loadCachedMapFiles() async {
     //Process CSV file holding details of maps held in application cache
-    if (_settings.mapDir == null) {
-      Directory? dir = await getExternalStorageDirectory();
-      dir ??= await getApplicationDocumentsDirectory();
-      String destdirectory = path.join(dir.path, MapAppSettings.localMapDir);
-      await Directory(destdirectory).create(recursive: true);
-      _settings.mapDir = destdirectory;
-    }
+    _settings.mapDir ??= await MapAppSettings.setMapDir();
     File cacheCsvFile = File(
       "${_settings.mapDir}/${MapAppSettings.mapCsvFile}",
     );

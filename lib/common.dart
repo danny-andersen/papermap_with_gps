@@ -73,20 +73,38 @@ class MapAppSettings {
   }
   List<TrackPoint> trackPoints = [];
 
-  static Future<Directory> getRootDirectory() async {
-    Directory? rootdir;
+  static Future<String> setMapDir() async {
+    Directory dir = await getApplicationDirectory();
+    String destdirectory = path.join(dir.path, MapAppSettings.localMapDir);
+    await Directory(destdirectory).create(recursive: true);
+    return destdirectory;
+  }
+
+  static Future<Directory> getApplicationDirectory() async {
+    Directory? appDir;
     try {
       if (await Permission.manageExternalStorage.request().isGranted) {
-        // rootdir = await getDownloadsDirectory();
-        //If we get to here and directory is null, set the Doc directory manually
-        // print('Root dir = $rootdir');
-        rootdir = Directory('/storage/emulated/0/Documents');
+        appDir = await getExternalStorageDirectory();
       } else {
         print("Failed to get permission to manage external storage");
       }
     } catch (e) {
       print("Failed to get external storage directory, trying docs: $e");
       // exceptionStr = e.toString();
+    }
+    appDir ??= await getApplicationDocumentsDirectory();
+    return appDir;
+  }
+
+  static Future<Directory> getRootDirectory() async {
+    Directory? rootdir;
+    if (await Permission.manageExternalStorage.request().isGranted) {
+      // rootdir = await getDownloadsDirectory();
+      //If we get to here and directory is null, set the Doc directory manually
+      // print('Root dir = $rootdir');
+      rootdir = Directory('/storage/emulated/0/Documents');
+    } else {
+      print("Failed to get permission to manage external storage");
     }
     rootdir ??= await getApplicationDocumentsDirectory();
     return rootdir;
