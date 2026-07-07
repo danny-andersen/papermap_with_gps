@@ -135,7 +135,7 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
       context: context,
       rootDirectory: Directory(_settings.mapDir!),
       fsType: FilesystemType.file,
-      // allowedExtensions: ['gpx', 'xml'],
+      allowedExtensions: ['.gpx', '.xml'],
       fileTileSelectMode: FileTileSelectMode.wholeTile,
     );
     if (filePath == null) return;

@@ -77,7 +77,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
       context: context,
       rootDirectory: Directory(_settings.mapDir!),
       fsType: FilesystemType.file,
-      allowedExtensions: ['.xml'],
+      allowedExtensions: ['.gpx', '.xml'],
       fileTileSelectMode: FileTileSelectMode.wholeTile,
     );
     if (filePath == null) return;

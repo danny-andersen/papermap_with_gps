@@ -81,7 +81,8 @@ class MyAppState extends State<MyApp> {
   Future<void> _importCSVFile(BuildContext context, String? csvfile) async {
     if (csvfile != null) {
       if (_settings.mapDir == null) {
-        Directory dir = await getApplicationDocumentsDirectory();
+        Directory? dir = await getExternalStorageDirectory();
+        dir ??= await getApplicationDocumentsDirectory();
         String destdirectory = path.join(dir.path, MapAppSettings.localMapDir);
         await Directory(destdirectory).create(recursive: true);
         _settings.mapDir = destdirectory;
@@ -240,7 +241,8 @@ class MyAppState extends State<MyApp> {
   Future<void> _loadCachedMapFiles() async {
     //Process CSV file holding details of maps held in application cache
     if (_settings.mapDir == null) {
-      Directory dir = await getApplicationDocumentsDirectory();
+      Directory? dir = await getExternalStorageDirectory();
+      dir ??= await getApplicationDocumentsDirectory();
       String destdirectory = path.join(dir.path, MapAppSettings.localMapDir);
       await Directory(destdirectory).create(recursive: true);
       _settings.mapDir = destdirectory;
@@ -815,7 +817,6 @@ class MyAppState extends State<MyApp> {
                             _selectedPoint = null;
                             _distance = 0;
                             _panMap = null;
-                            _settings.trackPoints.clear();
                           });
                         },
                       ),

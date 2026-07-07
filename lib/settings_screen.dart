@@ -70,8 +70,8 @@ class SettingsScreenState extends State<SettingsScreen> {
                         // Ignore
                       }
                     }
-                    Directory? rootdir =
-                        await getApplicationDocumentsDirectory();
+                    Directory? rootdir = await getExternalStorageDirectory();
+                    rootdir ??= await getApplicationDocumentsDirectory();
                     String destDir = path.join(
                       rootdir.path,
                       MapAppSettings.localMapDir,
@@ -111,7 +111,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       context: context,
       rootDirectory: Directory(_settings.mapDir!),
       fsType: FilesystemType.file,
-      allowedExtensions: ['.xml'],
+      allowedExtensions: ['.gpx', '.xml'],
       fileTileSelectMode: FileTileSelectMode.wholeTile,
     );
     if (filePath == null) return;
@@ -255,7 +255,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Row(
+                    Column(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         ElevatedButton.icon(
@@ -268,6 +268,15 @@ class SettingsScreenState extends State<SettingsScreen> {
                           icon: Icon(Icons.add_task),
                           label: const Text('Add GPX File'),
                         ),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _settings.trackPoints.clear();
+                            });
+                          },
+                          icon: Icon(Icons.clear_all),
+                          label: const Text('Clear GPX Data'),
+                        ),
                       ],
                     ),
                   ],
@@ -275,7 +284,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             // Map Actions Group
             Card(
@@ -293,19 +302,16 @@ class SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    GridView.count(
-                      padding: const EdgeInsets.all(8.0),
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        ElevatedButton(
+                        ElevatedButton.icon(
                           onPressed: () => _listMaps(),
-                          child: const Text('List Cached Maps'),
+                          icon: const Icon(Icons.list_outlined),
+                          label: const Text('List Cached Maps'),
                         ),
-                        ElevatedButton(
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.import_export),
                           onPressed: () async {
                             _settings.csvFileToImport = await _selectCSVFile(
                               context,
@@ -316,7 +322,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                               Navigator.of(context).pop();
                             }
                           },
-                          child: const Text('Import Maps via CSV'),
+                          label: const Text('Import Maps'),
                         ),
                       ],
                     ),
