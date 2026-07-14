@@ -39,6 +39,7 @@ class MyAppState extends State<MyApp> {
   late List<MapData> _currentMaps;
   MapData? _panMap;
   int _currentMapIndex = 0;
+  int _highlightedGPXpoint = 0;
   // TransformationController _transformationController =
   //     TransformationController();
   final LatLongConverter _latLongConverter = LatLongConverter();
@@ -385,6 +386,7 @@ class MyAppState extends State<MyApp> {
           imageSize.width,
           imageSize.height,
         );
+        _highlightedGPXpoint = 0;
         if (_currentPosition != null && _selectedPosition != null) {
           _distance = calculateDistance(
             _currentPosition!.latitude,
@@ -516,12 +518,20 @@ class MyAppState extends State<MyApp> {
           altitudeAccuracy: 0.0,
         );
         if (_selectedPosition != null) {
-          _distance = calculateDistance(
-            _currentPosition!.latitude,
-            _currentPosition!.longitude,
-            _selectedPosition!.latitude,
-            _selectedPosition!.longitude,
-          );
+          if (_highlightedGPXpoint == 0) {
+            _distance = calculateDistance(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+              _selectedPosition!.latitude,
+              _selectedPosition!.longitude,
+            );
+          } else {
+            _distance = calculateDistanceBasedOnGpx(
+              _settings.trackPoints,
+              _currentPosition,
+              _highlightedGPXpoint,
+            );
+          }
         }
       }
     }
@@ -758,7 +768,7 @@ class MyAppState extends State<MyApp> {
           size: Size(totalBoxSize.width, totalBoxSize.height),
           painter: GpxTrailPainter(
             points: _settings.trackPoints,
-            hightlightedPoint: 0,
+            hightlightedPoint: _highlightedGPXpoint,
             imageWidth: totalBoxSize.width,
             imageHeight: totalBoxSize.height,
             mapData: currentMap,
@@ -803,6 +813,7 @@ class MyAppState extends State<MyApp> {
                             _selectedPoint = null;
                             _distance = 0;
                             _panMap = null;
+                            _highlightedGPXpoint = 0;
                           });
                         },
                       ),
@@ -870,9 +881,80 @@ class MyAppState extends State<MyApp> {
               ),
               body: Column(
                 children: [
+                  if (_settings.trackPoints.isNotEmpty) ...{
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            8.0,
+                            0.0,
+                            5.0,
+                            0.0,
+                          ),
+                          child: Text(
+                            'GPX Point Move',
+                            style: const TextStyle(color: Colors.black),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.fast_rewind),
+                          tooltip: 'GPX Back 5',
+                          onPressed: () {
+                            setState(() {
+                              _movePreviousGPXPoint(5);
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_left),
+                          tooltip: 'GPX Move Back 1',
+                          onPressed: () {
+                            setState(() {
+                              _movePreviousGPXPoint(1);
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_right),
+                          tooltip: 'GPX Move Forward 1',
+                          onPressed: () {
+                            setState(() {
+                              _moveNextGPXPoint(1);
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.fast_forward),
+                          tooltip: 'GPX Forward 5',
+                          onPressed: () {
+                            setState(() {
+                              _moveNextGPXPoint(5);
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.location_on,
+                            color: Colors.blue,
+                          ),
+                          tooltip: 'GPX nearest selected point',
+                          onPressed: () {
+                            setState(() {
+                              _highlightedGPXpoint = getNearestPointIndex(
+                                _settings.trackPoints,
+                                _selectedPosition,
+                              );
+                              _moveNextGPXPoint(0);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  },
                   if (_settings.isManualEnabled) ...[
                     Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.fromLTRB(8.0, 0.0, 5.0, 0.0),
                       child: TextField(
                         controller: _positionController,
                         keyboardType: TextInputType.text,
@@ -896,7 +978,12 @@ class MyAppState extends State<MyApp> {
                     Row(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.fromLTRB(
+                            8.0,
+                            0.0,
+                            5.0,
+                            0.0,
+                          ),
                           child: Text(
                             _currentPosition != null
                                 ? '${_currentPosition!.latitude.toStringAsFixed(6)},${_currentPosition!.longitude.toStringAsFixed(6)}'
@@ -905,7 +992,12 @@ class MyAppState extends State<MyApp> {
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.fromLTRB(
+                            8.0,
+                            0.0,
+                            5.0,
+                            0.0,
+                          ),
                           child: Text(
                             _selectedPosition != null
                                 ? '${_selectedPosition!.latitude.toStringAsFixed(6)},${_selectedPosition!.longitude.toStringAsFixed(6)}'
@@ -915,7 +1007,12 @@ class MyAppState extends State<MyApp> {
                         ),
                         if (_distance != 0) ...{
                           Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.fromLTRB(
+                              8.0,
+                              0.0,
+                              5.0,
+                              0.0,
+                            ),
                             child: Text(
                               'Dist: ${_distance.toStringAsFixed(2)} km',
                               style: const TextStyle(color: Colors.green),
@@ -986,10 +1083,10 @@ class MyAppState extends State<MyApp> {
                                       // ),
                                     ),
                                   ),
+                                  _showGPXTrail(mapToShow),
                                   _buildFixedIcon(mapToShow),
                                   _buildSetPointIcon(mapToShow),
                                   _buildInfoBoxes(mapToShow),
-                                  _showGPXTrail(mapToShow),
                                 ],
                               ),
                             ),
@@ -1192,6 +1289,65 @@ class MyAppState extends State<MyApp> {
     if (arrow == PanDirection.down) {
       setState(() {
         _panMap = currentMap.mapBelow;
+      });
+    }
+  }
+
+  void _moveNextGPXPoint(int jump) {
+    if (_highlightedGPXpoint == 0) {
+      //Find nearest point on the track to the current GPS position
+      if (_currentPosition != null) {
+        _highlightedGPXpoint = getNearestPointIndex(
+          _settings.trackPoints,
+          _currentPosition!,
+        );
+      }
+    }
+    if (_highlightedGPXpoint < _settings.trackPoints.length - jump) {
+      setState(() {
+        _highlightedGPXpoint += jump;
+        _selectedPosition = Position(
+          latitude: _settings.trackPoints![_highlightedGPXpoint].lat,
+          longitude: _settings.trackPoints![_highlightedGPXpoint].lon,
+          timestamp: _settings.trackPoints![_highlightedGPXpoint].time,
+          accuracy: 0.0,
+          altitude: _settings.trackPoints![_highlightedGPXpoint].elevation,
+          heading: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+          headingAccuracy: 0.0,
+          altitudeAccuracy: 0.0,
+        );
+        _distance = calculateDistanceBasedOnGpx(
+          _settings.trackPoints,
+          _currentPosition,
+          _highlightedGPXpoint,
+        );
+      });
+    }
+  }
+
+  void _movePreviousGPXPoint(int jump) {
+    if (_highlightedGPXpoint > jump) {
+      setState(() {
+        _highlightedGPXpoint -= jump;
+        _selectedPosition = Position(
+          latitude: _settings.trackPoints![_highlightedGPXpoint].lat,
+          longitude: _settings.trackPoints![_highlightedGPXpoint].lon,
+          timestamp: _settings.trackPoints![_highlightedGPXpoint].time,
+          accuracy: 0.0,
+          altitude: _settings.trackPoints![_highlightedGPXpoint].elevation,
+          heading: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+          headingAccuracy: 0.0,
+          altitudeAccuracy: 0.0,
+        );
+        _distance = calculateDistanceBasedOnGpx(
+          _settings.trackPoints,
+          _currentPosition,
+          _highlightedGPXpoint,
+        );
       });
     }
   }

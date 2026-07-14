@@ -233,13 +233,25 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
             headingAccuracy: 0.0,
             altitudeAccuracy: 0.0,
           );
+          RenderBox? imageRenderBox =
+              _imageKey.currentContext?.findRenderObject() as RenderBox?;
+          if (imageRenderBox != null) {
+            Size size = imageRenderBox.size;
+            _width = size.width;
+            _height = size.height;
+          }
+          double top = _currentMap!.calculateTop(_secondPoint!, _height!);
+          double left = _currentMap!.calculateLeft(_secondPoint!, _width!);
+
           if (isSecondPoint) {
             setState(() {
               _secondPoint = pos;
+              _secondOffset = Offset(left, top);
             });
           } else {
             setState(() {
               _firstPoint = pos;
+              _firstOffset = Offset(left, top);
             });
           }
         }
@@ -257,6 +269,30 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
     if (_highlightedGPXpoint < _trackPoints.length - jump) {
       setState(() {
         _highlightedGPXpoint += jump;
+        _secondPoint = Position(
+          latitude: _settings.trackPoints![_highlightedGPXpoint].lat,
+          longitude: _settings.trackPoints![_highlightedGPXpoint].lon,
+          timestamp: _settings.trackPoints![_highlightedGPXpoint].time,
+          accuracy: 0.0,
+          altitude: _settings.trackPoints![_highlightedGPXpoint].elevation,
+          heading: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+          headingAccuracy: 0.0,
+          altitudeAccuracy: 0.0,
+        );
+        RenderBox? imageRenderBox =
+            _imageKey.currentContext?.findRenderObject() as RenderBox?;
+        if (imageRenderBox != null) {
+          Size size = imageRenderBox.size;
+          _width = size.width;
+          _height = size.height;
+        }
+        double top = _currentMap!.calculateTop(_secondPoint!, _height!);
+        double left = _currentMap!.calculateLeft(_secondPoint!, _width!);
+
+        _secondOffset = Offset(left, top);
+
         _updateGPXTextField();
       });
     }
@@ -266,6 +302,30 @@ class MapCalibrationScreenState extends State<MapCalibrationScreen> {
     if (_highlightedGPXpoint > jump) {
       setState(() {
         _highlightedGPXpoint -= jump;
+        _secondPoint = Position(
+          latitude: _settings.trackPoints![_highlightedGPXpoint].lat,
+          longitude: _settings.trackPoints![_highlightedGPXpoint].lon,
+          timestamp: _settings.trackPoints![_highlightedGPXpoint].time,
+          accuracy: 0.0,
+          altitude: _settings.trackPoints![_highlightedGPXpoint].elevation,
+          heading: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+          headingAccuracy: 0.0,
+          altitudeAccuracy: 0.0,
+        );
+        RenderBox? imageRenderBox =
+            _imageKey.currentContext?.findRenderObject() as RenderBox?;
+        if (imageRenderBox != null) {
+          Size size = imageRenderBox.size;
+          _width = size.width;
+          _height = size.height;
+        }
+        double top = _currentMap!.calculateTop(_secondPoint!, _height!);
+        double left = _currentMap!.calculateLeft(_secondPoint!, _width!);
+
+        _secondOffset = Offset(left, top);
+
         _updateGPXTextField();
       });
     }

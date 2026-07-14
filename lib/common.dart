@@ -650,3 +650,95 @@ double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
 
   return distance;
 }
+
+//
+// Calculates the distance between the current GPS location and the nearest
+// or currently selected GPX point on the track.
+//
+double calculateDistanceBasedOnGpx(
+  List<TrackPoint> trackPoints,
+  Position? currentPosition,
+  int highlightedGPXpoint,
+) {
+  if (currentPosition == null || trackPoints.isEmpty) {
+    // If no position or no points, distance remains 0 (or handled by old logic)
+    return 0.0;
+  }
+
+  double distanceToPoint = 0.0;
+
+  //Find the nearest point on the track to the current GPS position
+  int nearestPointIndex = getNearestPointIndex(trackPoints, currentPosition!);
+  //Add in the distance between the current position and the nearest GPX point on the track
+  distanceToPoint += calculateDistance(
+    currentPosition.latitude,
+    currentPosition.longitude,
+    trackPoints[nearestPointIndex].lat,
+    trackPoints[nearestPointIndex].lon,
+  );
+  if (highlightedGPXpoint >= 0) {
+    // Distance from nearest GPX point to the selected GPX point
+    distanceToPoint += totalDistanceBetween(
+      trackPoints,
+      nearestPointIndex,
+      highlightedGPXpoint,
+    );
+  }
+
+  return distanceToPoint;
+}
+
+/// Computes the total distance (in meters) between two indices
+/// in a list of TrackPoint objects.
+double totalDistanceBetween(
+  List<TrackPoint> points,
+  int startIndex,
+  int endIndex,
+) {
+  if (startIndex < 0 || endIndex >= points.length) {
+    return 0.0;
+  }
+
+  if (startIndex >= endIndex) {
+    int temp = startIndex;
+    startIndex = endIndex;
+    endIndex = temp;
+  }
+  double total = 0.0;
+
+  for (int i = startIndex; i < endIndex; i++) {
+    total += calculateDistance(
+      points[i].lat,
+      points[i].lon,
+      points[i + 1].lat,
+      points[i + 1].lon,
+    );
+  }
+
+  return total;
+}
+
+int getNearestPointIndex(List<TrackPoint> points, Position? currentPosition) {
+  double minDistance = double.infinity;
+  int nearestIndex = 0;
+
+  if (currentPosition == null) {
+    return nearestIndex;
+  }
+
+  for (int i = 0; i < points.length; i++) {
+    double distance = calculateDistance(
+      currentPosition.latitude,
+      currentPosition.longitude,
+      points[i].lat,
+      points[i].lon,
+    );
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestIndex = i;
+    }
+  }
+
+  return nearestIndex;
+}

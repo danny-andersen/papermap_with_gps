@@ -27,7 +27,7 @@ class GpxTrailPainter extends CustomPainter {
 
     final paintHighlighted =
         Paint()
-          ..color = Colors.white
+          ..color = Colors.blue
           ..style = PaintingStyle.fill;
 
     int index = -1;
@@ -56,7 +56,7 @@ class GpxTrailPainter extends CustomPainter {
       if (top >= 0 && left >= 0) {
         if (index == hightlightedPoint && hightlightedPoint != 0) {
           //Dont show the current marker position until the position has been set
-          canvas.drawCircle(Offset(left, top), 5.0, paintHighlighted);
+          canvas.drawCircle(Offset(left, top), 3.0, paintHighlighted);
         } else {
           canvas.drawCircle(Offset(left, top), 2.0, paint);
         }

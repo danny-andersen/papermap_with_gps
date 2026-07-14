@@ -28,7 +28,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
   Offset? _secondOffset;
   MapData? _currentMap;
   List<TrackPoint> _trackPoints = [];
-  final int _highlightedGPXpoint = 0;
+  int _highlightedGPXpoint = 0;
   double _distance = 0.0;
   double? _width;
   double? _height;
@@ -105,6 +105,10 @@ class ShowMapScreenState extends State<ShowMapScreen> {
         _height!,
       );
       _secondPoint = null;
+      _secondOffset = null;
+      _distance = 0.0;
+      _secondPointController.text = "";
+      _highlightedGPXpoint = 0;
     } else if (_secondPoint == null) {
       _secondOffset = Offset(offset.dx, offset.dy);
       if (_secondOffset != null) {
@@ -114,6 +118,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
           _width!,
           _height!,
         );
+        _highlightedGPXpoint = 0;
       }
     }
     if (_currentMap != null) {
@@ -259,7 +264,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(
-                'Distance: ${_distance.toStringAsFixed(2)} km',
+                '${_highlightedGPXpoint != 0 ? "GPX" : ""} Distance: ${_distance.toStringAsFixed(2)} km',
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
@@ -267,6 +272,92 @@ class ShowMapScreenState extends State<ShowMapScreen> {
         },
       ],
     );
+  }
+
+  void _moveNextGPXPoint(int jump) {
+    if (_highlightedGPXpoint == 0) {
+      //Find nearest point on the track to the current GPS position
+      if (_secondPoint != null) {
+        _highlightedGPXpoint = getNearestPointIndex(_trackPoints, _firstPoint);
+      }
+    }
+    if (_highlightedGPXpoint < _trackPoints.length - jump) {
+      RenderBox? imageRenderBox =
+          _imageKey.currentContext?.findRenderObject() as RenderBox?;
+      if (imageRenderBox != null) {
+        Size size = imageRenderBox.size;
+        _width = size.width;
+        _height = size.height;
+      }
+      setState(() {
+        _highlightedGPXpoint += jump;
+        _secondPoint = Position(
+          latitude: _trackPoints![_highlightedGPXpoint].lat,
+          longitude: _trackPoints![_highlightedGPXpoint].lon,
+          timestamp: _trackPoints![_highlightedGPXpoint].time,
+          accuracy: 0.0,
+          altitude: _trackPoints![_highlightedGPXpoint].elevation,
+          heading: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+          headingAccuracy: 0.0,
+          altitudeAccuracy: 0.0,
+        );
+        _secondPointController.text =
+            '${_secondPoint!.latitude.toStringAsFixed(6)}, ${_secondPoint!.longitude.toStringAsFixed(6)}';
+
+        double top = _currentMap!.calculateTop(_secondPoint!, _height!);
+        double left = _currentMap!.calculateLeft(_secondPoint!, _width!);
+
+        _secondOffset = Offset(left, top);
+
+        _distance = calculateDistanceBasedOnGpx(
+          _trackPoints,
+          _firstPoint,
+          _highlightedGPXpoint,
+        );
+      });
+    }
+  }
+
+  void _movePreviousGPXPoint(int jump) {
+    if (_highlightedGPXpoint > jump) {
+      RenderBox? imageRenderBox =
+          _imageKey.currentContext?.findRenderObject() as RenderBox?;
+      if (imageRenderBox != null) {
+        Size size = imageRenderBox.size;
+        _width = size.width;
+        _height = size.height;
+      }
+
+      setState(() {
+        _highlightedGPXpoint -= jump;
+        _secondPoint = Position(
+          latitude: _trackPoints![_highlightedGPXpoint].lat,
+          longitude: _trackPoints![_highlightedGPXpoint].lon,
+          timestamp: _trackPoints![_highlightedGPXpoint].time,
+          accuracy: 0.0,
+          altitude: _trackPoints![_highlightedGPXpoint].elevation,
+          heading: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+          headingAccuracy: 0.0,
+          altitudeAccuracy: 0.0,
+        );
+        _secondPointController.text =
+            '${_secondPoint!.latitude.toStringAsFixed(6)}, ${_secondPoint!.longitude.toStringAsFixed(6)}';
+        double top = _currentMap!.calculateTop(_secondPoint!, _height!);
+        double left = _currentMap!.calculateLeft(_secondPoint!, _width!);
+
+        _secondOffset = Offset(left, top);
+
+        _distance = calculateDistanceBasedOnGpx(
+          _trackPoints,
+          _firstPoint,
+          _highlightedGPXpoint,
+        );
+      });
+    }
   }
 
   @override
@@ -278,12 +369,76 @@ class ShowMapScreenState extends State<ShowMapScreen> {
         ),
       ),
       body: Column(
+        spacing: 0.0,
         children: [
+          if (_trackPoints.isNotEmpty) ...{
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8.0, 0.0, 5.0, 0.0),
+                  child: Text(
+                    'GPX Point Move:',
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.fast_rewind),
+                  tooltip: 'GPX Back 5',
+                  onPressed: () {
+                    setState(() {
+                      _movePreviousGPXPoint(5);
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_left),
+                  tooltip: 'GPX Move Back 1',
+                  onPressed: () {
+                    setState(() {
+                      _movePreviousGPXPoint(1);
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_right),
+                  tooltip: 'GPX Move Forward 1',
+                  onPressed: () {
+                    setState(() {
+                      _moveNextGPXPoint(1);
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.fast_forward),
+                  tooltip: 'GPX Forward 5',
+                  onPressed: () {
+                    setState(() {
+                      _moveNextGPXPoint(5);
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.location_on, color: Colors.blue),
+                  tooltip: 'GPX nearest selected point',
+                  onPressed: () {
+                    setState(() {
+                      _highlightedGPXpoint = getNearestPointIndex(
+                        _trackPoints,
+                        _secondPoint,
+                      );
+                      _moveNextGPXPoint(0);
+                    });
+                  },
+                ),
+              ],
+            ),
+          },
           Row(
             children: [
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.fromLTRB(8.0, 0.0, 5.0, 0.0),
                   child: TextField(
                     controller: _firstPointController,
                     decoration: const InputDecoration(labelText: 'First Point'),
@@ -302,7 +457,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.fromLTRB(8.0, 0.0, 5.0, 0.0),
                 child: ElevatedButton(
                   onPressed: _pickImage,
                   child: const Text('Choose Map'),
@@ -312,7 +467,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
                 padding: const EdgeInsets.all(8.0),
                 child: ElevatedButton(
                   onPressed: _currentMap != null ? _loadGPX : null,
-                  child: const Text('Load GPX file'),
+                  child: const Text('Load GPX'),
                 ),
               ),
             ],
