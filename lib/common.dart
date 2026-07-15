@@ -31,7 +31,7 @@ class TrackPoint {
 Future<List<TrackPoint>> parseGpxTrackPoints(String gpxXml) async {
   final document = XmlDocument.parse(gpxXml);
 
-  final trkpts = document.findAllElements('trkpt', namespace: '*');
+  final trkpts = document.findAllElements('trkpt', namespaceUri: '*');
 
   final points = <TrackPoint>[];
 
@@ -39,8 +39,8 @@ Future<List<TrackPoint>> parseGpxTrackPoints(String gpxXml) async {
     final lat = double.parse(pt.getAttribute('lat')!);
     final lon = double.parse(pt.getAttribute('lon')!);
 
-    final eleElement = pt.getElement('ele', namespace: '*');
-    final timeElement = pt.getElement('time', namespace: '*');
+    final eleElement = pt.getElement('ele', namespaceUri: '*');
+    final timeElement = pt.getElement('time', namespaceUri: '*');
 
     final elevation = eleElement != null ? double.parse(eleElement.text) : 0.0;
     final time =
@@ -72,6 +72,8 @@ class MapAppSettings {
     isManualEnabled = manual;
   }
   List<TrackPoint> trackPoints = [];
+  int gpxSmallStep = 5;
+  int gpxBigStep = 10;
 
   static Future<String> setMapDir() async {
     Directory dir = await getApplicationDirectory();
@@ -668,7 +670,7 @@ double calculateDistanceBasedOnGpx(
   double distanceToPoint = 0.0;
 
   //Find the nearest point on the track to the current GPS position
-  int nearestPointIndex = getNearestPointIndex(trackPoints, currentPosition!);
+  int nearestPointIndex = getNearestPointIndex(trackPoints, currentPosition);
   //Add in the distance between the current position and the nearest GPX point on the track
   distanceToPoint += calculateDistance(
     currentPosition.latitude,

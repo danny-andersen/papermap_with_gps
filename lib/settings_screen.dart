@@ -254,7 +254,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 5),
                     Column(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -263,11 +263,13 @@ class SettingsScreenState extends State<SettingsScreen> {
                           icon: const Icon(Icons.upload_file),
                           label: const Text('Load GPX file'),
                         ),
+                        const SizedBox(height: 5),
                         ElevatedButton.icon(
                           onPressed: () => _loadGPX(add: true),
                           icon: Icon(Icons.add_task),
                           label: const Text('Add GPX File'),
                         ),
+                        const SizedBox(height: 5),
                         ElevatedButton.icon(
                           onPressed: () {
                             setState(() {
@@ -277,6 +279,48 @@ class SettingsScreenState extends State<SettingsScreen> {
                           icon: Icon(Icons.clear_all),
                           label: const Text('Clear GPX Data'),
                         ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: _settings.gpxSmallStep.toString(),
+                                decoration: const InputDecoration(
+                                  labelText: 'GPX Step Size',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _settings.gpxSmallStep =
+                                        value.isNotEmpty
+                                            ? int.tryParse(value) ?? 5
+                                            : 5;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: _settings.gpxBigStep.toString(),
+                                decoration: const InputDecoration(
+                                  labelText: 'GPX Big Step Size',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _settings.gpxBigStep =
+                                        value.isNotEmpty
+                                            ? int.tryParse(value) ?? 10
+                                            : 10;
+                                    ;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ],
@@ -284,7 +328,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            const SizedBox(height: 10),
+            // const SizedBox(height: 10),
 
             // Map Actions Group
             Card(
@@ -301,7 +345,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Column(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -310,6 +354,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                           icon: const Icon(Icons.list_outlined),
                           label: const Text('List Cached Maps'),
                         ),
+                        const SizedBox(height: 5),
                         ElevatedButton.icon(
                           icon: const Icon(Icons.import_export),
                           onPressed: () async {
@@ -331,7 +376,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            // const SizedBox(height: 20),
 
             // Calibration & Display Actions Group
             Card(
@@ -395,17 +440,20 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            // const SizedBox(height: 20),
 
             // Done Button
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Done'),
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              spacing: 8.0,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Done'),
+                ),
+              ],
             ),
           ],
         ),
