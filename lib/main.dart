@@ -16,6 +16,7 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:papermap_with_gps/common.dart';
 import 'package:papermap_with_gps/settings_screen.dart';
 import 'package:papermap_with_gps/gpxpainter.dart';
+import 'package:papermap_with_gps/altitude_graph_screen.dart';
 
 void main() => runApp(const MaterialApp(home: MyApp()));
 
@@ -899,37 +900,37 @@ class MyAppState extends State<MyApp> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.fast_rewind),
-                          tooltip: 'GPX Back 5',
+                          tooltip: 'GPX Back ${_settings.gpxBigStep}',
                           onPressed: () {
                             setState(() {
-                              _movePreviousGPXPoint(5);
+                              _movePreviousGPXPoint(_settings.gpxBigStep);
                             });
                           },
                         ),
                         IconButton(
                           icon: const Icon(Icons.keyboard_arrow_left),
-                          tooltip: 'GPX Move Back 1',
+                          tooltip: 'GPX Move Back ${_settings.gpxSmallStep}',
                           onPressed: () {
                             setState(() {
-                              _movePreviousGPXPoint(1);
+                              _movePreviousGPXPoint(_settings.gpxSmallStep);
                             });
                           },
                         ),
                         IconButton(
                           icon: const Icon(Icons.keyboard_arrow_right),
-                          tooltip: 'GPX Move Forward 1',
+                          tooltip: 'GPX Move Forward ${_settings.gpxSmallStep}',
                           onPressed: () {
                             setState(() {
-                              _moveNextGPXPoint(1);
+                              _moveNextGPXPoint(_settings.gpxSmallStep);
                             });
                           },
                         ),
                         IconButton(
                           icon: const Icon(Icons.fast_forward),
-                          tooltip: 'GPX Forward 5',
+                          tooltip: 'GPX Forward ${_settings.gpxBigStep}',
                           onPressed: () {
                             setState(() {
-                              _moveNextGPXPoint(5);
+                              _moveNextGPXPoint(_settings.gpxBigStep);
                             });
                           },
                         ),
@@ -947,6 +948,20 @@ class MyAppState extends State<MyApp> {
                               );
                               _moveNextGPXPoint(0);
                             });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.moving),
+                          tooltip: 'GPX Altitude Plot',
+                          onPressed: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => AltitudeGraphScreen(
+                                      trackPoints: _settings.trackPoints,
+                                    ),
+                              ),
+                            );
                           },
                         ),
                       ],

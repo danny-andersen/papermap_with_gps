@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 
 import 'package:papermap_with_gps/common.dart';
 import 'package:papermap_with_gps/gpxpainter.dart';
+import 'package:papermap_with_gps/altitude_graph_screen.dart';
 
 class ShowMapScreen extends StatefulWidget {
   final MapAppSettings settings;
@@ -429,6 +430,19 @@ class ShowMapScreenState extends State<ShowMapScreen> {
                       );
                       _moveNextGPXPoint(0);
                     });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.moving),
+                  tooltip: 'GPX Altitude Plot',
+                  onPressed: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder:
+                            (context) =>
+                                AltitudeGraphScreen(trackPoints: _trackPoints),
+                      ),
+                    );
                   },
                 ),
               ],
