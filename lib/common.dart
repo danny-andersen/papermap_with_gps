@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:xml/xml.dart';
 
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong_to_osgrid/latlong_to_osgrid.dart';
 import 'package:path/path.dart' as path;
 import 'package:csv/csv.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -27,6 +28,8 @@ class TrackPoint {
   String toString() =>
       'TrackPoint(lat: $lat, lon: $lon, ele: $elevation, time: $time)';
 }
+
+final LatLongConverter _latLongConverter = LatLongConverter();
 
 Future<List<TrackPoint>> parseGpxTrackPoints(String gpxXml) async {
   final document = XmlDocument.parse(gpxXml);
@@ -84,15 +87,17 @@ class MapAppSettings {
 
   static Future<Directory> getApplicationDirectory() async {
     Directory? appDir;
-    try {
-      if (await Permission.manageExternalStorage.request().isGranted) {
-        appDir = await getExternalStorageDirectory();
-      } else {
-        print("Failed to get permission to manage external storage");
+    if (Platform.isAndroid) {
+      try {
+        if (await Permission.manageExternalStorage.request().isGranted) {
+          appDir = await getExternalStorageDirectory();
+        } else {
+          print("Failed to get permission to manage external storage");
+        }
+      } catch (e) {
+        print("Failed to get external storage directory, trying docs: $e");
+        // exceptionStr = e.toString();
       }
-    } catch (e) {
-      print("Failed to get external storage directory, trying docs: $e");
-      // exceptionStr = e.toString();
     }
     appDir ??= await getApplicationDocumentsDirectory();
     return appDir;
@@ -100,13 +105,15 @@ class MapAppSettings {
 
   static Future<Directory> getRootDirectory() async {
     Directory? rootdir;
-    if (await Permission.manageExternalStorage.request().isGranted) {
-      // rootdir = await getDownloadsDirectory();
-      //If we get to here and directory is null, set the Doc directory manually
-      // print('Root dir = $rootdir');
-      rootdir = Directory('/storage/emulated/0/Documents');
-    } else {
-      print("Failed to get permission to manage external storage");
+    if (Platform.isAndroid) {
+      if (await Permission.manageExternalStorage.request().isGranted) {
+        // rootdir = await getDownloadsDirectory();
+        //If we get to here and directory is null, set the Doc directory manually
+        // print('Root dir = $rootdir');
+        rootdir = Directory('/storage/emulated/0/Documents');
+      } else {
+        print("Failed to get permission to manage external storage");
+      }
     }
     rootdir ??= await getApplicationDocumentsDirectory();
     return rootdir;
@@ -626,6 +633,45 @@ class MapData {
   }
 }
 
+//If in deg, mins and secs convert to digital degrees
+//If already in dig degress, just parse the double
+
+double? convertToDecimalDegrees(String coord) {
+  // Extract the direction (N/S/E/W)
+  String direction = coord.substring(coord.length - 1);
+  coord = coord.substring(0, coord.length - 1);
+
+  // Split into degrees, minutes, and seconds
+  RegExp regex = RegExp(r'''(\d+)°(\d+)\'(\d+(\.\d+)?)\"''');
+  Match? match = regex.firstMatch(coord);
+
+  if (match == null) {
+    throw const FormatException("Invalid coordinate format");
+  }
+
+  // Parse the degrees, minutes, and seconds
+  double? degrees = double.tryParse(match.group(1)!);
+  double? minutes = double.tryParse(match.group(2)!);
+  double? seconds = double.tryParse(match.group(3)!);
+
+  // Convert to decimal degrees
+  double? decimalDegrees;
+  if (degrees != null && minutes != null && seconds != null) {
+    decimalDegrees = degrees + (minutes / 60) + (seconds / 3600);
+    // Adjust for direction
+    if (direction == 'S' || direction == 'W') {
+      decimalDegrees *= -1;
+    }
+  }
+
+  return decimalDegrees;
+}
+
+(double, double) convertOSToLatLon(int easting, int northing) {
+  LatLong result = _latLongConverter.getLatLongFromOSGB(easting, northing);
+  return (result.lat, result.long);
+}
+
 // Function to convert degrees to radians
 double degreesToRadians(double degrees) {
   return degrees * pi / 180;
@@ -724,7 +770,7 @@ int getNearestPointIndex(List<TrackPoint> points, Position? currentPosition) {
   double minDistance = double.infinity;
   int nearestIndex = 0;
 
-  if (currentPosition == null) {
+  if (points.isEmpty || currentPosition == null) {
     return nearestIndex;
   }
 
@@ -743,4 +789,100 @@ int getNearestPointIndex(List<TrackPoint> points, Position? currentPosition) {
   }
 
   return nearestIndex;
+}
+
+// Calculates altitude gain between two points (positive change)
+(double, double) calculateAltitudeChange(
+  List<TrackPoint> points, {
+  int? startIndex,
+  int? endIndex,
+}) {
+  // double gain = 0.0;
+  // double loss = 0.0;
+  final start = startIndex ?? 0;
+  final end = endIndex ?? points.length - 1;
+
+  // for (int i = start + 1; i <= end; i++) {
+  //   final currentAltitude = points[i].elevation;
+  //   final previousAltitude = points[i - 1].elevation;
+
+  //   if (currentAltitude > previousAltitude) {
+  //     gain += currentAltitude - previousAltitude;
+  //   } else if (currentAltitude < previousAltitude) {
+  //     loss += previousAltitude - currentAltitude;
+  //   }
+  // }
+
+  return calculateAltitudeStats(points.sublist(start, end + 1));
+}
+
+/// Main function: smoothing + threshold + gain/loss
+(double, double) calculateAltitudeStats(
+  List<TrackPoint> points, {
+  int smoothingWindow = 7,
+  double minDelta = 2.0,
+}) {
+  if (points.length < 2) {
+    return (0, 0);
+  }
+
+  // 1. Extract raw altitude series
+  final raw = points.map((p) => p.elevation).toList();
+
+  // 2. Smooth altitude using Savitzky–Golay filter
+  final smoothed = _savitzkyGolay(raw, smoothingWindow);
+
+  // 3. Compute gain/loss with threshold
+  double gain = 0.0;
+  double loss = 0.0;
+
+  for (int i = 1; i < smoothed.length; i++) {
+    final delta = smoothed[i] - smoothed[i - 1];
+
+    if (delta.abs() < minDelta) {
+      // Ignore tiny noise fluctuations
+      continue;
+    }
+
+    if (delta > 0) {
+      gain += delta;
+    } else {
+      loss += -delta;
+    }
+  }
+
+  return (gain, loss);
+}
+
+/// Savitzky–Golay smoothing (polynomial order 2)
+List<double> _savitzkyGolay(List<double> data, int windowSize) {
+  if (windowSize.isEven || windowSize < 5) {
+    throw ArgumentError("windowSize must be odd and >= 5");
+  }
+
+  final half = windowSize ~/ 2;
+  final smoothed = List<double>.filled(data.length, 0);
+
+  for (int i = 0; i < data.length; i++) {
+    double acc = 0;
+    double weightSum = 0;
+
+    for (int j = -half; j <= half; j++) {
+      final idx = (i + j).clamp(0, data.length - 1);
+      final w = _sgWeight(j, half);
+      acc += data[idx] * w;
+      weightSum += w;
+    }
+
+    smoothed[i] = acc / weightSum;
+  }
+
+  return smoothed;
+}
+
+/// Precomputed Savitzky–Golay weights for polynomial order 2
+double _sgWeight(int k, int halfWindow) {
+  // For simplicity, use a quadratic SG kernel:
+  // w(k) = 1 - (k^2 / (halfWindow^2))
+  return 1 - (k * k) / (halfWindow * halfWindow);
 }

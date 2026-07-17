@@ -403,7 +403,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                           ),
                         );
                       },
-                      child: const Text('Display Map View'),
+                      child: const Text('Display Map'),
                     ),
                     const SizedBox(height: 10),
                     ElevatedButton(

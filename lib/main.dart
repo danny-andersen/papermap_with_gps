@@ -8,7 +8,6 @@ import 'dart:math' as math;
 import 'package:csv/csv_settings_autodetection.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong_to_osgrid/latlong_to_osgrid.dart';
 import 'package:path/path.dart' as path;
 import 'package:csv/csv.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -31,6 +30,7 @@ class MyAppState extends State<MyApp> {
   Position? _currentPosition;
   Position? _selectedPosition;
   Offset? _selectedPoint;
+  int? _currentPositionIndex;
   double _distance = 0;
   DateTime _lastUpdate = DateTime(1, 1, 1, 0, 0, 0);
   final TextEditingController _positionController = TextEditingController();
@@ -43,7 +43,6 @@ class MyAppState extends State<MyApp> {
   int _highlightedGPXpoint = 0;
   // TransformationController _transformationController =
   //     TransformationController();
-  final LatLongConverter _latLongConverter = LatLongConverter();
   late Timer gpsUpdateTimer;
 
   @override
@@ -527,6 +526,10 @@ class MyAppState extends State<MyApp> {
               _selectedPosition!.longitude,
             );
           } else {
+            _currentPositionIndex = getNearestPointIndex(
+              _settings.trackPoints,
+              _currentPosition,
+            );
             _distance = calculateDistanceBasedOnGpx(
               _settings.trackPoints,
               _currentPosition,
@@ -560,45 +563,6 @@ class MyAppState extends State<MyApp> {
     } catch (e) {
       print(e);
     }
-  }
-
-  //If in deg, mins and secs convert to digital degrees
-  //If already in dig degress, just parse the double
-
-  double? _convertToDecimalDegrees(String coord) {
-    // Extract the direction (N/S/E/W)
-    String direction = coord.substring(coord.length - 1);
-    coord = coord.substring(0, coord.length - 1);
-
-    // Split into degrees, minutes, and seconds
-    RegExp regex = RegExp(r'''(\d+)°(\d+)\'(\d+(\.\d+)?)\"''');
-    Match? match = regex.firstMatch(coord);
-
-    if (match == null) {
-      throw const FormatException("Invalid coordinate format");
-    }
-
-    // Parse the degrees, minutes, and seconds
-    double? degrees = double.tryParse(match.group(1)!);
-    double? minutes = double.tryParse(match.group(2)!);
-    double? seconds = double.tryParse(match.group(3)!);
-
-    // Convert to decimal degrees
-    double? decimalDegrees;
-    if (degrees != null && minutes != null && seconds != null) {
-      decimalDegrees = degrees + (minutes / 60) + (seconds / 3600);
-      // Adjust for direction
-      if (direction == 'S' || direction == 'W') {
-        decimalDegrees *= -1;
-      }
-    }
-
-    return decimalDegrees;
-  }
-
-  (double, double) convertOSToLatLon(int easting, int northing) {
-    LatLong result = _latLongConverter.getLatLongFromOSGB(easting, northing);
-    return (result.lat, result.long);
   }
 
   Widget _buildSetPointIcon(MapData currentMap) {
@@ -954,11 +918,21 @@ class MyAppState extends State<MyApp> {
                           icon: const Icon(Icons.moving),
                           tooltip: 'GPX Altitude Plot',
                           onPressed: () async {
+                            setState(() {
+                              _highlightedGPXpoint = getNearestPointIndex(
+                                _settings.trackPoints,
+                                _selectedPosition,
+                              );
+                              _moveNextGPXPoint(0);
+                            });
+
                             await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder:
                                     (context) => AltitudeGraphScreen(
                                       trackPoints: _settings.trackPoints,
+                                      pointAIndex: _currentPositionIndex,
+                                      pointBIndex: _highlightedGPXpoint,
                                     ),
                               ),
                             );

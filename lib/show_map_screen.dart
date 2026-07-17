@@ -25,8 +25,10 @@ class ShowMapScreenState extends State<ShowMapScreen> {
   final GlobalKey _imageKey = GlobalKey();
   Position? _firstPoint;
   Offset? _firstOffset;
+  int? _firstPointIndex;
   Position? _secondPoint;
   Offset? _secondOffset;
+  int? _secondPointIndex;
   MapData? _currentMap;
   List<TrackPoint> _trackPoints = [];
   int _highlightedGPXpoint = 0;
@@ -105,6 +107,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
         _width!,
         _height!,
       );
+      _firstPointIndex = getNearestPointIndex(_trackPoints, _firstPoint);
       _secondPoint = null;
       _secondOffset = null;
       _distance = 0.0;
@@ -120,6 +123,7 @@ class ShowMapScreenState extends State<ShowMapScreen> {
           _height!,
         );
         _highlightedGPXpoint = 0;
+        _secondPointIndex = getNearestPointIndex(_trackPoints, _secondPoint);
       }
     }
     if (_currentMap != null) {
@@ -439,8 +443,11 @@ class ShowMapScreenState extends State<ShowMapScreen> {
                     await Navigator.of(context).push(
                       MaterialPageRoute(
                         builder:
-                            (context) =>
-                                AltitudeGraphScreen(trackPoints: _trackPoints),
+                            (context) => AltitudeGraphScreen(
+                              trackPoints: _trackPoints,
+                              pointAIndex: _firstPointIndex,
+                              pointBIndex: _secondPointIndex,
+                            ),
                       ),
                     );
                   },
