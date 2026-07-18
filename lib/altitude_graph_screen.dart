@@ -54,21 +54,122 @@ class AltitudeGraphScreen extends StatelessWidget {
         graphData
             .map((item) => FlSpot(item.$1.toDouble(), item.$2.toDouble()))
             .toList();
-
+    final spotsPoints = spots.sublist(startIndex, endIndex + 1);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Altitude vs Distance Travelled'),
         backgroundColor: Colors.blueGrey,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
-            // Replaced the placeholder Container with fl_chart LineChartWidget
+            if (pointBIndex != null) ...{
+              Text(
+                'Between Points:',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              SizedBox(
+                height: 400,
+                child: LineChart(
+                  LineChartData(
+                    minX: spotsPoints.isNotEmpty ? spotsPoints.first.x : 0,
+                    maxX: spotsPoints.isNotEmpty ? spotsPoints.last.x : 0,
+                    minY:
+                        ((_minAltitude(spotsPoints) - 100) / 100).floor() * 100,
+                    maxY:
+                        ((_maxAltitude(spotsPoints) + 100) / 100).ceil() * 100,
+                    // The data points for the line chart.
+                    // We use a list of ScatterPointModel, mapping (Distance, Altitude) to Chart X/Y coordinates.
+                    lineBarsData: [
+                      LineChartBarData(
+                        isCurved: true,
+                        color: Colors.blue,
+                        barWidth: 3,
+                        dotData: const FlDotData(show: false),
+
+                        spots: spotsPoints,
+                      ),
+                    ],
+                    // Optionally add gradient background for better visualization
+                    borderData: FlBorderData(
+                      show: true,
+                      border: Border.all(color: Colors.grey),
+                    ),
+
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40,
+                          getTitlesWidget: (value, meta) {
+                            return Text(
+                              '${value.toInt()}m',
+                              style: const TextStyle(fontSize: 12),
+                            );
+                          },
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          getTitlesWidget: (value, meta) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                '${value.toStringAsFixed(1)}km',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                    // Grid lines and etc.
+                    gridData: FlGridData(show: true),
+                  ),
+                ),
+              ),
+              Text(
+                'Distance: ${calculateDistanceBasedOnGpx(trackPoints, currentPosition, endIndex).toStringAsFixed(1)} km',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Altitude Change: ',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  Text(
+                    'Gain: ${altitudeGain.toStringAsFixed(0)}m ',
+                    style: TextStyle(
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Loss: ${altitudeLoss.toStringAsFixed(0)}m',
+                    style: TextStyle(
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+            },
+            Text(
+              'Total GPX Trail:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             SizedBox(
-              height: 300,
+              height: 400,
               child: LineChart(
                 LineChartData(
                   minX: 0,
@@ -97,6 +198,12 @@ class AltitudeGraphScreen extends StatelessWidget {
                         dashArray: [5, 5], // Optional: makes the line dashed
                         label: VerticalLineLabel(
                           show: true,
+                          alignment: Alignment.topCenter,
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                           labelResolver:
                               (line) =>
                                   '${spots[startIndex].x.toStringAsFixed(1)}km, ${spots[startIndex].y.toStringAsFixed(0)}m',
@@ -111,6 +218,12 @@ class AltitudeGraphScreen extends StatelessWidget {
                         dashArray: [5, 5], // Optional: makes the line dashed
                         label: VerticalLineLabel(
                           show: true,
+                          alignment: Alignment.bottomCenter,
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                           labelResolver:
                               (line) =>
                                   '${spots[endIndex].x.toStringAsFixed(1)}km, ${spots[endIndex].y.toStringAsFixed(0)}m',
@@ -159,7 +272,7 @@ class AltitudeGraphScreen extends StatelessWidget {
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 40,
+                        reservedSize: 30,
                         getTitlesWidget: (value, meta) {
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
@@ -177,49 +290,28 @@ class AltitudeGraphScreen extends StatelessWidget {
                   ),
 
                   // Grid lines and etc.
-                  gridData: FlGridData(show: false),
+                  gridData: FlGridData(show: true),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
 
-            // Displaying some key metrics or the raw data structure for confirmation
-            // Add text at bottom showing total altitude gain and loss between the two points
-            Text(
-              'Distance Between Points: ${calculateDistanceBasedOnGpx(trackPoints, currentPosition, endIndex).toStringAsFixed(1)}km',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
             Row(
               children: [
-                Text(
-                  'Altitude Change Between Points: ',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(
-                  'Gain: ${altitudeGain.toStringAsFixed(0)}m ',
-                  style: TextStyle(
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.bold,
+                if (graphData.isNotEmpty) ...[
+                  Text(
+                    'Distance: ${graphData.last.$1.toStringAsFixed(1)}km, ',
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-                ),
-                Text(
-                  'Loss: ${altitudeLoss.toStringAsFixed(0)}m',
-                  style: TextStyle(
-                    color: Colors.red.shade700,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                ],
               ],
             ),
-            const SizedBox(height: 10),
-
-            // Show total height gain and loss for the complete trail
-            Text(
-              'Total Trail Statistics:',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
             Row(
               children: [
+                Text(
+                  'Altitude Change: ',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+
                 Text(
                   'Gain: ${altitudeGainTotal.toStringAsFixed(0)}m ',
                   style: TextStyle(
@@ -236,17 +328,9 @@ class AltitudeGraphScreen extends StatelessWidget {
                 ),
               ],
             ),
-            Row(
-              children: [
-                if (graphData.isNotEmpty) ...[
-                  Text(
-                    'Total Distance: ${graphData.last.$1.toStringAsFixed(1)}km, ',
-                  ),
-                  Text(
-                    'Max Altitude: ${graphData.fold<double>(0.0, (max, item) => item.$2 > max ? item.$2 : max).toStringAsFixed(0)} meters',
-                  ),
-                ],
-              ],
+            Text(
+              'Max Altitude: ${graphData.fold<double>(0.0, (max, item) => item.$2 > max ? item.$2 : max).toStringAsFixed(0)} meters',
+              style: Theme.of(context).textTheme.titleSmall,
             ),
           ],
         ),

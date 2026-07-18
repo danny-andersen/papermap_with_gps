@@ -517,6 +517,11 @@ class MyAppState extends State<MyApp> {
           headingAccuracy: 0.0,
           altitudeAccuracy: 0.0,
         );
+        _currentPositionIndex = getNearestPointIndex(
+          _settings.trackPoints,
+          _currentPosition,
+        );
+
         if (_selectedPosition != null) {
           if (_highlightedGPXpoint == 0) {
             _distance = calculateDistance(
@@ -526,10 +531,6 @@ class MyAppState extends State<MyApp> {
               _selectedPosition!.longitude,
             );
           } else {
-            _currentPositionIndex = getNearestPointIndex(
-              _settings.trackPoints,
-              _currentPosition,
-            );
             _distance = calculateDistanceBasedOnGpx(
               _settings.trackPoints,
               _currentPosition,
@@ -918,21 +919,25 @@ class MyAppState extends State<MyApp> {
                           icon: const Icon(Icons.moving),
                           tooltip: 'GPX Altitude Plot',
                           onPressed: () async {
-                            setState(() {
-                              _highlightedGPXpoint = getNearestPointIndex(
-                                _settings.trackPoints,
-                                _selectedPosition,
-                              );
-                              _moveNextGPXPoint(0);
-                            });
-
+                            if (_selectedPosition != null) {
+                              setState(() {
+                                _highlightedGPXpoint = getNearestPointIndex(
+                                  _settings.trackPoints,
+                                  _selectedPosition,
+                                );
+                                _moveNextGPXPoint(0);
+                              });
+                            }
                             await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder:
                                     (context) => AltitudeGraphScreen(
                                       trackPoints: _settings.trackPoints,
                                       pointAIndex: _currentPositionIndex,
-                                      pointBIndex: _highlightedGPXpoint,
+                                      pointBIndex:
+                                          _highlightedGPXpoint == 0
+                                              ? null
+                                              : _highlightedGPXpoint,
                                     ),
                               ),
                             );
