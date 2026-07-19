@@ -54,7 +54,14 @@ class AltitudeGraphScreen extends StatelessWidget {
         graphData
             .map((item) => FlSpot(item.$1.toDouble(), item.$2.toDouble()))
             .toList();
-    final spotsPoints = spots.sublist(startIndex, endIndex + 1);
+    int start = startIndex;
+    int end = endIndex;
+    if (endIndex < startIndex) {
+      final temp = startIndex;
+      start = endIndex;
+      end = temp;
+    }
+    final spotsPoints = spots.sublist(start, end + 1);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Altitude vs Distance Travelled'),

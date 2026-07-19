@@ -800,9 +800,14 @@ int getNearestPointIndex(List<TrackPoint> points, Position? currentPosition) {
 }) {
   // double gain = 0.0;
   // double loss = 0.0;
-  final start = startIndex ?? 0;
-  final end = endIndex ?? points.length - 1;
+  int start = startIndex ?? 0;
+  int end = endIndex ?? points.length - 1;
 
+  if (start > end) {
+    final temp = start;
+    start = end;
+    end = temp;
+  }
   // for (int i = start + 1; i <= end; i++) {
   //   final currentAltitude = points[i].elevation;
   //   final previousAltitude = points[i - 1].elevation;
