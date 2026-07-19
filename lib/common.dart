@@ -67,6 +67,7 @@ class MapAppSettings {
   bool showPosition = false;
   bool showPan = true;
   bool showAltitude = true;
+  bool showGPX = true;
   String? csvFileToImport;
   String? mapDir;
   List<MapData> mapFilesMetadata = List.empty(growable: true);

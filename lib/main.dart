@@ -716,7 +716,7 @@ class MyAppState extends State<MyApp> {
 
   Widget _showGPXTrail(MapData currentMap) {
     Widget retWidget = const SizedBox();
-    if (_settings.trackPoints.isNotEmpty) {
+    if (_settings.trackPoints.isNotEmpty && _settings.showGPX) {
       RenderBox? imageRenderBox =
           _imageKey.currentContext?.findRenderObject() as RenderBox?;
       if (imageRenderBox != null) {
@@ -783,6 +783,36 @@ class MyAppState extends State<MyApp> {
                           });
                         },
                       ),
+                      if (_settings.trackPoints.isNotEmpty) ...{
+                        IconButton(
+                          icon: const Icon(Icons.moving),
+                          tooltip: 'GPX Altitude Plot',
+                          onPressed: () async {
+                            if (_selectedPosition != null) {
+                              setState(() {
+                                _highlightedGPXpoint = getNearestPointIndex(
+                                  _settings.trackPoints,
+                                  _selectedPosition,
+                                );
+                                _moveNextGPXPoint(0);
+                              });
+                            }
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => AltitudeGraphScreen(
+                                      trackPoints: _settings.trackPoints,
+                                      pointAIndex: _currentPositionIndex,
+                                      pointBIndex:
+                                          _highlightedGPXpoint == 0
+                                              ? null
+                                              : _highlightedGPXpoint,
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                      },
                       IconButton(
                         icon: const Icon(Icons.arrow_upward),
                         tooltip: 'Scale Up',
@@ -847,7 +877,8 @@ class MyAppState extends State<MyApp> {
               ),
               body: Column(
                 children: [
-                  if (_settings.trackPoints.isNotEmpty) ...{
+                  if (_settings.trackPoints.isNotEmpty &&
+                      _settings.showGPX) ...{
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
@@ -913,34 +944,6 @@ class MyAppState extends State<MyApp> {
                               );
                               _moveNextGPXPoint(0);
                             });
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.moving),
-                          tooltip: 'GPX Altitude Plot',
-                          onPressed: () async {
-                            if (_selectedPosition != null) {
-                              setState(() {
-                                _highlightedGPXpoint = getNearestPointIndex(
-                                  _settings.trackPoints,
-                                  _selectedPosition,
-                                );
-                                _moveNextGPXPoint(0);
-                              });
-                            }
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder:
-                                    (context) => AltitudeGraphScreen(
-                                      trackPoints: _settings.trackPoints,
-                                      pointAIndex: _currentPositionIndex,
-                                      pointBIndex:
-                                          _highlightedGPXpoint == 0
-                                              ? null
-                                              : _highlightedGPXpoint,
-                                    ),
-                              ),
-                            );
                           },
                         ),
                       ],
@@ -1156,7 +1159,7 @@ class MyAppState extends State<MyApp> {
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(
-                'Distance: ${_distance.toStringAsFixed(2)} km',
+                '${_highlightedGPXpoint != 0 ? "GPX" : ""} Distance: ${_distance.toStringAsFixed(2)} km',
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),

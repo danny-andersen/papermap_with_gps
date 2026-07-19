@@ -189,6 +189,15 @@ class SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
               _buildSettingRow(
+                title: 'Show GPX Track',
+                value: _settings.showGPX,
+                onChanged: (value) {
+                  setState(() {
+                    _settings.showGPX = value;
+                  });
+                },
+              ),
+              _buildSettingRow(
                 title: 'Show Position Coordinates',
                 value: _settings.showPosition,
                 onChanged: (value) {
