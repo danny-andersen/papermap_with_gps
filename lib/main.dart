@@ -752,6 +752,18 @@ class MyAppState extends State<MyApp> {
     }
     MapData mapToShow = _panMap ?? _currentMaps[_currentMapIndex];
     return MaterialApp(
+      theme: ThemeData(
+        useMaterial3: true,
+
+        // Define the default brightness and colors.
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ), // This is the theme of your application.
+        // primarySwatch: Colors.blue,
+        fontFamily: 'Roboto',
+      ),
+
       home: Builder(
         builder:
             (context) => Scaffold(
