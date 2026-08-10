@@ -459,9 +459,10 @@ class MyAppState extends State<MyApp> {
                 _selectedPosition!.longitude,
               );
             }
-            _getBestMaps();
             _positionController.text =
                 "${position.latitude.toString()},${position.longitude.toString()}";
+            _updatePosition();
+            _getBestMaps();
           });
         });
       } catch (e) {
